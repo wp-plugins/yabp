@@ -1,10 +1,10 @@
 === Yet Another bol.com Plugin ===
 Contributors: Mitchel Troost
 Donate link: http://tromit.nl/diensten/wordpress-plugins/
-Tags: bol.com, affiliate, responsive, cronjob
+Tags: bol.com, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
 Tested up to: 4.0
-Stable tag: 1.0
+Stable tag: 1.0.1
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ A powerful plugin to easily integrate bol.com products in your blog posts or at 
 
 == Description ==
 
-The next generation bol.com plugin for WordPress is here. This powerful plugin is designed to allow you to easily display selected products in your blog posts and on your pages. At the control panel, you enter your bol.com Open API key and your siteid from the bol.com Partner Program. The next step is to search in the bol.com Catalog for the products you want to display. After the desired products have been added, you retrieve their shortcodes that allow you to display these products anywhere in your blog post or at your page.
+The next generation bol.com plugin for WordPress is here. This powerful plugin is designed to allow you to easily display selected products in your blog posts and on your pages. At the control panel, you enter your bol.com Open API Access key and your siteid from the bol.com Partner Program. The next step is to search in the bol.com Catalog for the products you want to display. After the desired products have been added, you retrieve their shortcodes that allow you to display these products anywhere in your blog post or at your page.
 
 Displaying bol.com products in blog posts and on pages is nothing new. Therefore this plugin takes this to the next level. The product data as price, delivery time and rating are updated automatically at a selected interval. Its display and style can be highly customized. You can choose to show the (new) buttons of the Partner Program, and you can choose to record the impressions of your products on your website in the Program. And last but not least, the display of products is designed to be integrated in desktop, mobile and responsive themes.
 
@@ -37,17 +37,17 @@ This is not an official plugin from bol.com, but it is safe to use as bol.com's 
 1. Upload the 'yabp' directory to the '/wp-content/plugins/' directory
 2. Activate the plugin through the 'Plugins' page in WordPress
 3. Go to the 'Options' page of the plugin by clicking on the YAbP tab
-4. Enter your API key and siteid on the 'Options' page and save your data
+4. Enter your bol.com Open API Access key and siteid on the 'Options' page and save your data
 5. Search for products on the 'Add product' page, and add them accordingly
-6. Go to the 'Product list' page, and retrieve the shortcodes of your products
-7. Place your shortcodes on any page or in any post
+6. Go to the 'Product list' page, and retrieve and copy the shortcodes of your products
+7. Paste your shortcodes on any page or in any post
 8. Customize your product's style and settings
 
 == Frequently Asked Questions ==
 
-= Why is the language of this plugin in English? =
+= What API key type should I enter on the Options page? =
 
-The developer is currently translating all strings of the plugin as fast as possible. A Dutch version will be included in the next update.
+You should enter your bol.com Open API Access Key only.
 
 = Can I use this plugin to show items in mobile or responsive themes? =
 
@@ -79,10 +79,21 @@ Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yab
 
 == Changelog ==
 
+= 1.0.1 =
+
+* Added Dutch language
+* Updated texts to specify what API key type should be entered
+* Improved activate/deactivate handling of the plugin
+* Fixed timezone bug
+* Minor code and text improvements    
+    
 = 1.0 =
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.1 =
+The Dutch language has been added, and some minor improvements have been completed.
 
 = 1.0 =
 Initial release.
