@@ -1,0 +1,33 @@
+/*
+    Name: Yet Another bol.com Plugin
+    Version: 1.0.2
+    Author: Mitchel Troost    
+*/
+
+.yabp_item_wrapper {
+    margin-top: 50px;
+    margin-bottom: 50px;
+    width: auto;
+    display: block;
+    overflow: hidden;
+}
+.yabp_item_wrapper img { -moz-box-shadow: none;-webkit-box-shadow: none;box-shadow: none;-moz-border-radius: none;border-radius: none; }
+.yabp_item_img {
+    float: left;
+    max-width:100% !important;
+    height:auto;
+    display:block;
+}
+.yabp_item_info_left {
+    float: left;
+    height: auto;
+}
+
+.yabp_item_rating { margin-left: 10px;  margin-top: 10px; display:inline-block; vertical-align:top; }
+.yabp_item_title { margin-left: 10px; font-weight: bold; display:inline-block; vertical-align:top; }
+.yabp_item_subtitle { margin-left: 10px; display:inline-block; vertical-align:top; }
+.yabp_item_listprice { font-size: 15px; margin-left: 20px; margin-top: 15px; display:inline-block; vertical-align:top; text-decoration: line-through; }
+.yabp_item_price { font-size: 15px; margin-left: 20px; margin-top: 15px; display:inline-block; vertical-align:top; }
+.yabp_item_button { margin-left: 20px; margin-top: 15px; display:inline-block; vertical-align:top; }
+.yabp_item_textlink { margin-left: 20px; margin-top: 15px; display:inline-block; vertical-align:top; }
+.yabp_item_availability { margin-left: 20px; margin-top: 15px; display:inline-block; vertical-align:top; }
