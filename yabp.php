@@ -3,7 +3,7 @@
     Plugin Name: Yet Another bol.com Plugin
     Plugin URI: http://tromit.nl/diensten/wordpress-plugins/
     Description: A powerful plugin to easily integrate bol.com products in your blog posts or at your pages to earn money with the bol.com Partner Program.
-    Version: 1.0.3
+    Version: 1.0.4
     Author: Mitchel Troost
     Author URI: http://tromit.nl/
     License: GPL2
@@ -38,7 +38,7 @@ global $wpdb;
 function yabp_I18n() { load_plugin_textdomain( 'yabp', false, dirname(plugin_basename( __FILE__ )) . '/lang/'); }
 add_action('plugins_loaded', 'yabp_I18n');
 
-$yabp_version = "1.0.3";
+$yabp_version = "1.0.4";
 $table_name_yabp = $wpdb->prefix . 'yabp';
 $table_name_yabp_items = $wpdb->prefix . 'yabp_items';
 $yabp_partnerlink_prefix = "https://partnerprogramma.bol.com/click/click?p=1&amp;t=url&amp;s=";
@@ -1013,74 +1013,75 @@ function yabp_itemlist_init() {
 add_action('init', 'yabp_itemlist_init');
 add_shortcode('yabp', 'yabp_item_shortcode_execute');
 
-function yabp_item_shortcode_execute($atts, $content = '') {
-    
+function yabp_item_shortcode_execute($atts, $content = '') {    
     global $yabp_bolcom_buy_button, $yabp_bolcom_buy_button_alt, $yabp_bolcom_view_button, $yabp_bolcom_view_button_alt, $yabp_impression_imglink_prefix;    
     $entry_id = $atts[0];
     
     if (isset($atts['subid'])) { $subid = urlencode($atts['subid']); }
     else { $subid = false; }
     
-    $output = '<div class="yabp_item_wrapper">';    
-    $title = yabp_item_value_via_column_name($entry_id,'item_title');
-    
-    if (yabp_entry_showthumb_via_entry_id($entry_id)) { 
-        $thumburl = yabp_item_value_via_column_name($entry_id,yabp_entry_thumbsize_via_entry_id($entry_id, true));
-        $output .= '<div class="yabp_item_img"><img alt="'.$title.'" title="'.$title.'" src="'.$thumburl.'" /></div>';
-    }
-    
-    $output .= '<div class="yabp_item_info_left">';    
-    
-    if (yabp_entry_showtitle_via_entry_id($entry_id)) {
-        $output .= '<span class="yabp_item_title"'.(get_option('yabp_styling_item_title_fontsize')||get_option('yabp_styling_item_title_fontcolour')?' style="'.(get_option('yabp_styling_item_title_fontsize')?'font-size: '.get_option('yabp_styling_item_title_fontsize').'px;':'').(get_option('yabp_styling_item_title_fontcolour')?'color: #'.get_option('yabp_styling_item_title_fontcolour').';':'').'"':'').'>'.$title.'</span>';
-    }
-    if (yabp_entry_showsubtitle_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_subtitle') != "") {
-        $subtitle = yabp_item_value_via_column_name($entry_id,'item_subtitle');
-        $output .= '<br /><span class="yabp_item_subtitle"'.(get_option('yabp_styling_item_subtitle_fontsize')||get_option('yabp_styling_item_subtitle_fontcolour')?' style="'.(get_option('yabp_styling_item_subtitle_fontsize')?'font-size: '.get_option('yabp_styling_item_subtitle_fontsize').'px;':'').(get_option('yabp_styling_item_subtitle_fontcolour')?'color: #'.get_option('yabp_styling_item_subtitle_fontcolour').';':'').'"':'').'>'.$subtitle.'</span>';
-    }
-
-    if (yabp_entry_showrating_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_rating') != 0) {
-        $ratingspan = yabp_item_value_via_column_name($entry_id,'item_ratingspan');
-        $output .= '<br /><span class="yabp_item_rating">'.$ratingspan.'</span>';
-    }
-
-    if (yabp_entry_showprice_via_entry_id($entry_id)) {
-        $price = yabp_format_price(yabp_item_value_via_column_name($entry_id,'item_price'));
-        if (yabp_entry_showlistprice_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_listprice') > 0) {
-            $listprice = yabp_format_price(yabp_item_value_via_column_name($entry_id,'item_listprice'));
-            
-            $output .= '<br /><span class="yabp_item_listprice"'.(get_option('yabp_styling_item_listprice_fontsize')||get_option('yabp_styling_item_listprice_fontcolour')?' style="'.(get_option('yabp_styling_item_listprice_fontsize')?'font-size: '.get_option('yabp_styling_item_listprice_fontsize').'px;':'').(get_option('yabp_styling_item_listprice_fontcolour')?'color: #'.get_option('yabp_styling_item_listprice_fontcolour').';':'').'"':'').'>'.$listprice.'</span>';
-            $output .= '<span class="yabp_item_price"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';        
-        }
-        else {
-            $output .= '<br /><span class="yabp_item_price"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';
-        }
-    }
-    if (yabp_entry_showavailability_via_entry_id($entry_id)) {
-        $availability = yabp_item_value_via_column_name($entry_id,'item_availability');
-        $output .= '<br /><span class="yabp_item_availability"'.(get_option('yabp_styling_item_availability_fontsize')||get_option('yabp_styling_item_availability_fontcolour')?' style="'.(get_option('yabp_styling_item_availability_fontsize')?'font-size: '.get_option('yabp_styling_item_availability_fontsize').'px;':'').(get_option('yabp_styling_item_availability_fontcolour')?'color: #'.get_option('yabp_styling_item_availability_fontcolour').';':'').'"':'').'>'.$availability.'</span>';
-    }
-    
-    if (yabp_entry_showbutton_via_entry_id($entry_id)) {
-        $view = false;
-        if (get_option('yabp_styling_item_button_usealternative') == 1) {
-            if (get_option('yabp_styling_item_button_useviewbutton') == 1) { $view = true; $buttonurl = $yabp_bolcom_view_button_alt; }
-            else { $buttonurl = $yabp_bolcom_buy_button_alt;}            
-        }
-        else {
-            if (get_option('yabp_styling_item_button_useviewbutton') == 1) { $view = true; $buttonurl = $yabp_bolcom_view_button; }
-            else { $buttonurl = $yabp_bolcom_buy_button; }            
-        }        
-        $output .= '<br /><a href="'.str_replace("&amp;f=TXL", "&amp;f=BTN", yabp_item_value_via_column_name($entry_id,'item_afflink')).($subid?'&amp;subid='.$subid:'').'" rel="nofollow"><img class="yabp_item_button" alt="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" title="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" src="'.$buttonurl.'" /></a>';
-        
-        if (get_option('yabp_item_getimpressions') == 1) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=BTN&amp;name='.urlencode(yabp_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
-    }
+    if (!yabp_entry_updateinterval_via_entry_id($entry_id)) { $output = ''; }
     else {
-        $output .= '<br /><a href="'.yabp_item_value_via_column_name($entry_id,'item_afflink').($subid?"&amp;subid=".$subid:"").'" rel="nofollow"><span class="yabp_item_textlink"'.(get_option('yabp_styling_item_textlink_fontsize')||get_option('yabp_styling_item_textlink_fontcolour')?' style="'.(get_option('yabp_styling_item_textlink_fontsize')?'font-size: '.get_option('yabp_styling_item_textlink_fontsize').'px;':'').(get_option('yabp_styling_item_textlink_fontcolour')?'color: #'.get_option('yabp_styling_item_textlink_fontcolour').';':'').'"':'').'>'.get_option('yabp_item_textlink_text').'</span></a>';
-        if (get_option('yabp_item_getimpressions') == 1) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=TXL&amp;name='.urlencode(yabp_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
-    }
+        $output = '<div class="yabp_item_wrapper">';    
+        $title = yabp_item_value_via_column_name($entry_id,'item_title');
     
-    $output .= "</div></div>";
+        if (yabp_entry_showthumb_via_entry_id($entry_id)) { 
+            $thumburl = yabp_item_value_via_column_name($entry_id,yabp_entry_thumbsize_via_entry_id($entry_id, true));
+            $output .= '<div class="yabp_item_img"><img alt="'.$title.'" title="'.$title.'" src="'.$thumburl.'" /></div>';
+        }
+    
+        $output .= '<div class="yabp_item_info_left">';    
+    
+        if (yabp_entry_showtitle_via_entry_id($entry_id)) {
+            $output .= '<span class="yabp_item_title"'.(get_option('yabp_styling_item_title_fontsize')||get_option('yabp_styling_item_title_fontcolour')?' style="'.(get_option('yabp_styling_item_title_fontsize')?'font-size: '.get_option('yabp_styling_item_title_fontsize').'px;':'').(get_option('yabp_styling_item_title_fontcolour')?'color: #'.get_option('yabp_styling_item_title_fontcolour').';':'').'"':'').'>'.$title.'</span>';
+        }
+        if (yabp_entry_showsubtitle_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_subtitle') != "") {
+            $subtitle = yabp_item_value_via_column_name($entry_id,'item_subtitle');
+            $output .= '<br /><span class="yabp_item_subtitle"'.(get_option('yabp_styling_item_subtitle_fontsize')||get_option('yabp_styling_item_subtitle_fontcolour')?' style="'.(get_option('yabp_styling_item_subtitle_fontsize')?'font-size: '.get_option('yabp_styling_item_subtitle_fontsize').'px;':'').(get_option('yabp_styling_item_subtitle_fontcolour')?'color: #'.get_option('yabp_styling_item_subtitle_fontcolour').';':'').'"':'').'>'.$subtitle.'</span>';
+        }
+
+        if (yabp_entry_showrating_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_rating') != 0) {
+            $ratingspan = yabp_item_value_via_column_name($entry_id,'item_ratingspan');
+            $output .= '<br /><span class="yabp_item_rating">'.$ratingspan.'</span>';
+        }
+
+        if (yabp_entry_showprice_via_entry_id($entry_id)) {
+            $price = yabp_format_price(yabp_item_value_via_column_name($entry_id,'item_price'));
+            if (yabp_entry_showlistprice_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_listprice') > 0) {
+                $listprice = yabp_format_price(yabp_item_value_via_column_name($entry_id,'item_listprice'));
+            
+                $output .= '<br /><span class="yabp_item_listprice"'.(get_option('yabp_styling_item_listprice_fontsize')||get_option('yabp_styling_item_listprice_fontcolour')?' style="'.(get_option('yabp_styling_item_listprice_fontsize')?'font-size: '.get_option('yabp_styling_item_listprice_fontsize').'px;':'').(get_option('yabp_styling_item_listprice_fontcolour')?'color: #'.get_option('yabp_styling_item_listprice_fontcolour').';':'').'"':'').'>'.$listprice.'</span>';
+                $output .= '<span class="yabp_item_price"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';        
+            }
+            else {
+                $output .= '<br /><span class="yabp_item_price"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';
+            }
+        }
+        if (yabp_entry_showavailability_via_entry_id($entry_id)) {
+            $availability = yabp_item_value_via_column_name($entry_id,'item_availability');
+            $output .= '<br /><span class="yabp_item_availability"'.(get_option('yabp_styling_item_availability_fontsize')||get_option('yabp_styling_item_availability_fontcolour')?' style="'.(get_option('yabp_styling_item_availability_fontsize')?'font-size: '.get_option('yabp_styling_item_availability_fontsize').'px;':'').(get_option('yabp_styling_item_availability_fontcolour')?'color: #'.get_option('yabp_styling_item_availability_fontcolour').';':'').'"':'').'>'.$availability.'</span>';
+        }
+    
+        if (yabp_entry_showbutton_via_entry_id($entry_id)) {
+            $view = false;
+            if (get_option('yabp_styling_item_button_usealternative') == 1) {
+                if (get_option('yabp_styling_item_button_useviewbutton') == 1) { $view = true; $buttonurl = $yabp_bolcom_view_button_alt; }
+                else { $buttonurl = $yabp_bolcom_buy_button_alt;}            
+            }
+            else {
+                if (get_option('yabp_styling_item_button_useviewbutton') == 1) { $view = true; $buttonurl = $yabp_bolcom_view_button; }
+                else { $buttonurl = $yabp_bolcom_buy_button; }            
+            }        
+            $output .= '<br /><a href="'.str_replace("&amp;f=TXL", "&amp;f=BTN", yabp_item_value_via_column_name($entry_id,'item_afflink')).($subid?'&amp;subid='.$subid:'').'" rel="nofollow"><img class="yabp_item_button" alt="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" title="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" src="'.$buttonurl.'" /></a>';
+        
+            if (get_option('yabp_item_getimpressions') == 1) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=BTN&amp;name='.urlencode(yabp_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
+        }
+        else {
+            $output .= '<br /><a href="'.yabp_item_value_via_column_name($entry_id,'item_afflink').($subid?"&amp;subid=".$subid:"").'" rel="nofollow"><span class="yabp_item_textlink"'.(get_option('yabp_styling_item_textlink_fontsize')||get_option('yabp_styling_item_textlink_fontcolour')?' style="'.(get_option('yabp_styling_item_textlink_fontsize')?'font-size: '.get_option('yabp_styling_item_textlink_fontsize').'px;':'').(get_option('yabp_styling_item_textlink_fontcolour')?'color: #'.get_option('yabp_styling_item_textlink_fontcolour').';':'').'"':'').'>'.get_option('yabp_item_textlink_text').'</span></a>';
+            if (get_option('yabp_item_getimpressions') == 1) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=TXL&amp;name='.urlencode(yabp_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
+        }    
+        $output .= "</div></div>";
+    }
     return $output;
 }
 

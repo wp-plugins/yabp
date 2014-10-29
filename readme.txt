@@ -4,7 +4,7 @@ Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
 Tested up to: 4.0
-Stable tag: 1.0.3
+Stable tag: 1.0.4
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,9 @@ Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yab
 5. Product list of the plugin
 
 == Changelog ==
+
+= 1.0.4 =
+* Fixed a bug on blogs/posts where a shortcode is still present from a product that has been deleted.
 
 = 1.0.3 =
 * Updated Dutch translation.
