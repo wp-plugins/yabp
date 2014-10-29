@@ -24,6 +24,10 @@ Displaying bol.com products in blog posts and on pages is nothing new. Therefore
 * Highly customizable layout, and you can choose between product links and the new bol.com buttons
 * Support for use in desktop, mobile and responsive themes
 
+= Demo =
+
+A page with a demo product displayed with use of this plugin can be found [here](http://tromit.nl/naslagwerk/ipad/).
+
 = Support =
 
 Please take a look at the FAQ first. If you have another question or request, or if you found a bug, please contact the developer. You can send an [email](http://tromit.nl/diensten/wordpress-plugins/) or, send a tweet [@MarofNL](https://twitter.com/MarofNL).
