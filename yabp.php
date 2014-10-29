@@ -3,7 +3,7 @@
     Plugin Name: Yet Another bol.com Plugin
     Plugin URI: http://tromit.nl/diensten/wordpress-plugins/
     Description: A powerful plugin to easily integrate bol.com products in your blog posts or at your pages to earn money with the bol.com Partner Program.
-    Version: 1.0.2
+    Version: 1.0.3
     Author: Mitchel Troost
     Author URI: http://tromit.nl/
     License: GPL2
@@ -38,7 +38,7 @@ global $wpdb;
 function yabp_I18n() { load_plugin_textdomain( 'yabp', false, dirname(plugin_basename( __FILE__ )) . '/lang/'); }
 add_action('plugins_loaded', 'yabp_I18n');
 
-$yabp_version = "1.0.2";
+$yabp_version = "1.0.3";
 $table_name_yabp = $wpdb->prefix . 'yabp';
 $table_name_yabp_items = $wpdb->prefix . 'yabp_items';
 $yabp_partnerlink_prefix = "https://partnerprogramma.bol.com/click/click?p=1&amp;t=url&amp;s=";
@@ -827,7 +827,7 @@ function yabp_add_item() {
         }        
         if ((!isset($_POST['yabp_add_item_searchterm_submit']) && !isset($_POST['yabp_add_items_submit'])) || (isset($_POST['yabp_add_item_searchterm_submit']) && empty($_POST['yabp_add_item_searchterm'])) || $retry) {        
         ?>
-        <?php if (isset($_POST['yabp_add_item_searchterm_submit']) && empty($_POST['yabp_add_item_searchterm'])) { ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>Enter a search term to continue.</p></div><?php } ?>
+        <?php if (isset($_POST['yabp_add_item_searchterm_submit']) && empty($_POST['yabp_add_item_searchterm'])) { ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p><?php _e('Enter a search term to continue.', 'yabp'); ?></p></div><?php } ?>
         <form method="post">        
             <p><?php _e('Search terms', 'yabp'); ?>: <input type="text" size="80" name="yabp_add_item_searchterm"<?php if (isset($_POST['yabp_add_items_reset']) && isset($_POST['yabp_add_items_previoussearchterm'])) { ?> value="<?php echo $_POST['yabp_add_items_previoussearchterm']; ?>"<?php } ?> /></p>
             <p class="submit">
@@ -857,7 +857,7 @@ function yabp_itemlist() {
     $limit = ( ($_page-1) * $perpage).','.$perpage;
     
     if ($gettotal[0] == 0) {
-        echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>'.__('No products can be found.').'</p></div>'."\n";
+        echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>'.__('No products can be found.', 'yabp').'</p></div>'."\n";
         return;
     }
             
