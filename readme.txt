@@ -4,7 +4,7 @@ Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
 Tested up to: 4.0
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -79,8 +79,10 @@ Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yab
 
 == Changelog ==
 
-= 1.0.1 =
+= 1.0.2 =
+* Fixed a bug with the rating translation.
 
+= 1.0.1 =
 * Added Dutch language
 * Updated texts to specify what API key type should be entered
 * Improved activate/deactivate handling of the plugin
@@ -91,6 +93,9 @@ Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yab
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.2 =
+Fixed a bug with the rating translation.
 
 = 1.0.1 =
 The Dutch language has been added, and some minor improvements have been completed.

@@ -3,7 +3,7 @@
     Plugin Name: Yet Another bol.com Plugin
     Plugin URI: http://tromit.nl/diensten/wordpress-plugins/
     Description: A powerful plugin to easily integrate bol.com products in your blog posts or at your pages to earn money with the bol.com Partner Program.
-    Version: 1.0.1
+    Version: 1.0.2
     Author: Mitchel Troost
     Author URI: http://tromit.nl/
     License: GPL2
@@ -38,7 +38,7 @@ global $wpdb;
 function yabp_I18n() { load_plugin_textdomain( 'yabp', false, dirname(plugin_basename( __FILE__ )) . '/lang/'); }
 add_action('plugins_loaded', 'yabp_I18n');
 
-$yabp_version = "1.0.1";
+$yabp_version = "1.0.2";
 $table_name_yabp = $wpdb->prefix . 'yabp';
 $table_name_yabp_items = $wpdb->prefix . 'yabp_items';
 $yabp_partnerlink_prefix = "https://partnerprogramma.bol.com/click/click?p=1&amp;t=url&amp;s=";
@@ -586,7 +586,7 @@ function yabp_item_update_via_entry_id($entry_id) {
                     if ($countrating < 2) { $nicerating .= "_0"; } 
                     else { $nicerating .= '_' . substr($item_rating, -1); }
                     $altrating = str_replace("_", ".", $nicerating);
-                    $item_ratingspan = '<span class="rating"><img alt="'.printf(__('Score %d out of 5 stars.', 'yabp'), $altrating).'" title="'.printf(__('Score %d out of 5 stars.', 'yabp'), $altrating).'" src="http://review.bol.com/7628-nl_nl/' . $nicerating . '/5/rating.gif"></span>';
+                    $item_ratingspan = '<span class="rating"><img alt="'.sprintf(__('Score %1$.1f out of 5 stars.', 'yabp'), $altrating).'" title="'.sprintf(__('Score %1$.1f out of 5 stars.', 'yabp'), $altrating).'" src="http://review.bol.com/7628-nl_nl/' . $nicerating . '/5/rating.gif"></span>';
                 } 
                 else { $item_ratingspan = ''; }
             }
@@ -791,7 +791,7 @@ function yabp_add_item() {
                         if ($countrating < 2) { $nicerating .= "_0"; }                                                                                                                                                                                                      
                         else { $nicerating .= '_' . substr($rating, -1); }
                         $altrating = str_replace("_", ".", $nicerating);
-                        $ratingspan = '<span class="rating"><img alt="'.printf(__('Score %d out of 5 stars.', 'yabp'), $altrating).'" title="'.printf(__('Score %d out of 5 stars.', 'yabp'), $altrating).'" src="http://review.bol.com/7628-nl_nl/' . $nicerating . '/5/rating.gif"></span>';
+                        $ratingspan = '<span class="rating"><img alt="'.sprintf(__('Score %1$.1f out of 5 stars.', 'yabp'), $altrating).'" title="'.sprintf(__('Score %1$.1f out of 5 stars.', 'yabp'), $altrating).'" src="http://review.bol.com/7628-nl_nl/' . $nicerating . '/5/rating.gif"></span>';
                     } 
                     else { $ratingspan = ''; }
                 
