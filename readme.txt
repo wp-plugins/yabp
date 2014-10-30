@@ -23,6 +23,7 @@ Displaying bol.com products in blog posts and on pages is nothing new. Therefore
 * Prices, delivery times and ratings are automatically updated
 * Highly customizable layout, and you can choose between product links and the new bol.com buttons
 * Support for use in desktop, mobile and responsive themes
+* Full Dutch translation included
 
 = Demo =
 
@@ -48,6 +49,10 @@ This is not an official plugin from bol.com, but it is safe to use as bol.com's 
 8. Customize your product's style and settings
 
 == Frequently Asked Questions ==
+
+= Is this plugin available in Dutch? =
+
+Yes, a Dutch version is available if the WordPress language has been set to Dutch (nl_NL).
 
 = What API key type should I enter on the Options page? =
 
