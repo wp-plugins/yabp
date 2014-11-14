@@ -79,7 +79,7 @@ Yes, you can enter the shortcode of your products anywhere on your blog or websi
 
 Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yabp 1 subid="homepage header"]
 
-= When I select that a product should be put directly in the bol.com Cart and I click on the link, it does show a different delivery time and/or price than that there is show on my website. How come? =
+= When I select that a product should be put directly in the bol.com Cart and I click on the link, it does show a different delivery time and/or price than that there is shown on my website. How come? =
 
 Currently, bol.com only allows you to put products directly in the cart bol.com sells and ships themselves. Meaning, products from third party sellers cannot be put directly in the bol.com Cart at the moment. As an alternative, if bol.com does have the product included in its own catalog, it puts this product in the cart. This product may have a different delivery time and/or price than the product from the third party seller.
 
