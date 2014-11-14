@@ -1163,7 +1163,6 @@ function yabp_item_shortcode_execute($atts, $content = '') {
         if (yabp_entry_showbutton_via_entry_id($entry_id)) {
             $view = false;
             $curbuttontype = (int) yabp_entry_buttontype_via_entry_id($entry_id);
-            echo $curbuttontype;
             switch ($curbuttontype) {            
                 case 1:
                     $view = true; $buttonurl = $yabp_bolcom_view_button; break;
