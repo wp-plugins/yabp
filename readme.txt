@@ -4,7 +4,7 @@ Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
 Tested up to: 4.0
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,7 @@ Displaying bol.com products in blog posts and on pages is nothing new. Therefore
 * User-friendly process to add products to your database from the Catalog
 * Prices, delivery times and ratings are automatically updated
 * Highly customizable layout, and you can choose between product links and the new bol.com buttons
+* You can choose the products have to be opened in a new tab and/or be put directly in the bol.com Cart
 * Support for use in desktop, mobile and responsive themes
 * Full Dutch translation included
 
@@ -78,6 +79,10 @@ Yes, you can enter the shortcode of your products anywhere on your blog or websi
 
 Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yabp 1 subid="homepage header"]
 
+= When I select that a product should be put directly in the bol.com Cart and I click on the link, it does show a different delivery time and/or price than that there is show on my website. How come? =
+
+Currently, bol.com only allows you to put products directly in the cart bol.com sells and ships themselves. Meaning, products from third party sellers cannot be put directly in the bol.com Cart at the moment. As an alternative, if bol.com does have the product included in its own catalog, it puts this product in the cart. This product may have a different delivery time and/or price than the product from the third party seller.
+
 == Screenshots ==
 
 1. Products displayed on a page
@@ -87,6 +92,11 @@ Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yab
 5. Product list of the plugin
 
 == Changelog ==
+
+= 1.0.5 =
+* Added the ability to record impressions, open link in a new tab, put a product directly in the bol.com Cart and select the button type per item.
+* Updated Dutch translation.
+* Minor code and text improvements.
 
 = 1.0.4 =
 * Fixed a bug on blogs/posts where a shortcode is still present from a product that has been deleted.
@@ -98,16 +108,19 @@ Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yab
 * Fixed a bug with the rating translation.
 
 = 1.0.1 =
-* Added Dutch language
-* Updated texts to specify what API key type should be entered
-* Improved activate/deactivate handling of the plugin
-* Fixed timezone bug
-* Minor code and text improvements    
+* Added Dutch language.
+* Updated texts to specify what API key type should be entered.
+* Improved activate/deactivate handling of the plugin.
+* Fixed timezone bug.
+* Minor code and text improvements.
     
 = 1.0 =
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.5 =
+More options per item are now available.
 
 = 1.0.3 =
 Updated Dutch translation.
