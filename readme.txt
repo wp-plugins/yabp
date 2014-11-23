@@ -3,8 +3,8 @@ Contributors: Mitchel Troost
 Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
-Tested up to: 4.0
-Stable tag: 1.0.5
+Tested up to: 4.0.1
+Stable tag: 1.0.6
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,7 +22,7 @@ Displaying bol.com products in blog posts and on pages is nothing new. Therefore
 * User-friendly process to add products to your database from the Catalog
 * Prices, delivery times and ratings are automatically updated
 * Highly customizable layout, and you can choose between product links and the new bol.com buttons
-* You can choose the products have to be opened in a new tab and/or be put directly in the bol.com Cart
+* Choose products have to be opened in a new tab and/or be put directly in the bol.com Cart
 * Support for use in desktop, mobile and responsive themes
 * Full Dutch translation included
 
@@ -53,7 +53,7 @@ This is not an official plugin from bol.com, but it is safe to use as bol.com's 
 
 = Is this plugin available in Dutch? =
 
-Yes, a Dutch version is available if the WordPress language has been set to Dutch (nl_NL).
+Yes, a Dutch version is available if the WordPress language of your website has been set to Dutch (nl_NL).
 
 = What API key type should I enter on the Options page? =
 
@@ -75,11 +75,11 @@ Probably yes, because of the responsive design. However, this plugin has not bee
 
 Yes, you can enter the shortcode of your products anywhere on your blog or website.
 
-= Can I add a SubId to a product link to track my clicks? =
+= Can I add a SubId to a product link to track my clicks in the bol.com Partner Program? =
 
 Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yabp 1 subid="homepage header"]
 
-= When I select that a product should be put directly in the bol.com Cart and I click on the link, it does show a different delivery time and/or price than that there is shown on my website. How come? =
+= When I select that a product should be put directly in the bol.com Cart and I click on the displayed link, it does show a different delivery time and/or price than that there is shown on my website. How come? =
 
 Currently, bol.com only allows you to put products directly in the cart bol.com sells and ships themselves. Meaning, products from third party sellers cannot be put directly in the bol.com Cart at the moment. As an alternative, if bol.com does have the product included in its own catalog, it puts this product in the cart. This product may have a different delivery time and/or price than the product from the third party seller.
 
@@ -92,6 +92,14 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 5. Product list of the plugin
 
 == Changelog ==
+
+= 1.0.6 =
+* Improved responsive display of items.
+* Improved display of unavailable items.
+* Added option to replace an item in the database with a new one from the bol.com Catalog.
+* Added option to put thumbnail above the product information.
+* Applied small code improvements and interface tweaks.
+* Fixed minor bugs.
 
 = 1.0.5 =
 * Added the ability to record impressions, open link in a new tab, put a product directly in the bol.com Cart and select the button type per item.
@@ -118,6 +126,9 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.6 =
+Improved responsive design and display of unavailable items. Added option to replace items and to put product thumbnails above the content.
 
 = 1.0.5 =
 More options per item are now available.
