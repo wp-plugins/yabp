@@ -89,7 +89,7 @@ function yabp_init(){
 }
 
 function yabp_install(){
-    global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_version;
+    global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_version, $yabp_add_item_item_count, $yabp_itemlist_count, $yabp_item_textlink_text;
         
     $sql = "CREATE TABLE IF NOT EXISTS ".$table_name_yabp."(
         entry_id INT auto_increment NOT NULL,
