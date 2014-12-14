@@ -3,7 +3,7 @@
     Plugin Name: Yet Another bol.com Plugin
     Plugin URI: http://tromit.nl/diensten/wordpress-plugins/
     Description: A powerful plugin to easily integrate bol.com products in your blog posts or at your pages to earn money with the bol.com Partner Program.
-    Version: 1.0.6
+    Version: 1.0.7
     Author: Mitchel Troost
     Author URI: http://tromit.nl/
     License: GPL2
@@ -36,31 +36,6 @@
 global $wpdb;
 
 function yabp_I18n() { load_plugin_textdomain( 'yabp', false, dirname(plugin_basename( __FILE__ )) . '/lang/'); }
-add_action('plugins_loaded', 'yabp_I18n');
-
-$yabp_version = "1.0.6";
-$table_name_yabp = $wpdb->prefix . 'yabp';
-$table_name_yabp_items = $wpdb->prefix . 'yabp_items';
-$yabp_partnerlink_prefix = "https://partnerprogramma.bol.com/click/click?p=1&amp;t=url&amp;s=";
-$yabp_impression_imglink_prefix = "http://partnerprogramma.bol.com/click/impression?p=1&amp;s=";
-$yabp_open_api_link = "https://developers.bol.com/documentatie/open-api/aanmeldformulier-api-toegang/";
-$yabp_partnerprogram_link = "https://partnerprogramma.bol.com/partner/affiliate/account.do";
-$yabp_bolcom_buy_button = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_koop_dark_large.gif";
-$yabp_bolcom_buy_button_alt = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_koop_light_large.gif";
-$yabp_bolcom_view_button = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_bekijk_dark_large.gif";
-$yabp_bolcom_view_button_alt = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_bekijk_light_large.gif";
-$yabp_bolcom_putincart_link = "http://www.bol.com/nl/inwinkelwagentje.html?productId=";
-$yabp_add_item_item_count = 10;
-$yabp_add_item_item_count_limit = 50;
-$yabp_itemlist_count = 10;
-$yabp_styling_item_fontsize_lowlimit = 5;
-$yabp_styling_item_fontsize_highlimit = 30;
-$yabp_item_textlink_text = __('Buy now', 'yabp');
-$yabp_item_shortcode_format = "[yabp %entry_id%]";
-$yabp_item_time_format = "Y-m-d H:i:s";
-$yabp_cron_defaulttime = "08:00";
-$api_server = 'api.bol.com';
-$api_port = '443';
 
 function yabp_menu() {    
     if(function_exists('add_menu_page')){
@@ -83,10 +58,35 @@ add_action('admin_menu', 'yabp_menu');
 add_action('init', 'yabp_init');
         
 function yabp_init(){
-    global $yabp_version;    
+    global $yabp_version;
+    yabp_I18n();    
     if ((isset($_GET['activate']) || isset($_GET['activate-multi'])) || get_option('yabp_version') != $yabp_version) { yabp_install(); }
     if (is_admin()) { yabp_forms(); }
 }
+
+$yabp_version = "1.0.7";
+$table_name_yabp = $wpdb->prefix . 'yabp';
+$table_name_yabp_items = $wpdb->prefix . 'yabp_items';
+$yabp_partnerlink_prefix = "https://partnerprogramma.bol.com/click/click?p=1&amp;t=url&amp;s=";
+$yabp_impression_imglink_prefix = "http://partnerprogramma.bol.com/click/impression?p=1&amp;s=";
+$yabp_open_api_link = "https://developers.bol.com/documentatie/open-api/aanmeldformulier-api-toegang/";
+$yabp_partnerprogram_link = "https://partnerprogramma.bol.com/partner/affiliate/account.do";
+$yabp_bolcom_buy_button = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_koop_dark_large.gif";
+$yabp_bolcom_buy_button_alt = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_koop_light_large.gif";
+$yabp_bolcom_view_button = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_bekijk_dark_large.gif";
+$yabp_bolcom_view_button_alt = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_bekijk_light_large.gif";
+$yabp_bolcom_putincart_link = "http://www.bol.com/nl/inwinkelwagentje.html?productId=";
+$yabp_add_item_item_count = 10;
+$yabp_add_item_item_count_limit = 50;
+$yabp_itemlist_count = 10;
+$yabp_styling_item_fontsize_lowlimit = 5;
+$yabp_styling_item_fontsize_highlimit = 30;
+$yabp_item_textlink_text = "Buy now";
+$yabp_item_shortcode_format = "[yabp %entry_id%]";
+$yabp_item_time_format = "Y-m-d H:i:s";
+$yabp_cron_defaulttime = "08:00";
+$api_server = 'api.bol.com';
+$api_port = '443';
 
 function yabp_install(){
     global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_version, $yabp_add_item_item_count, $yabp_itemlist_count, $yabp_item_textlink_text;
@@ -118,8 +118,8 @@ function yabp_install(){
     $sql = "CREATE TABLE IF NOT EXISTS ".$table_name_yabp_items."(
         item_id INT auto_increment NOT NULL,
         entry_id INT NOT NULL,
-        item_title VARCHAR(100) NOT NULL,
-        item_subtitle VARCHAR(100),
+        item_title VARCHAR(500) NOT NULL,
+        item_subtitle VARCHAR(500),
         item_externalurl TEXT NOT NULL,
         item_afflink TEXT NOT NULL,
         item_xlthumb TEXT,
@@ -140,24 +140,27 @@ function yabp_install(){
     dbDelta($sql);    
     
     update_option('yabp_version', $yabp_version);
-    
-    $check_db = mysql_query("SHOW COLUMNS FROM `".$table_name_yabp."` LIKE 'entry_buttontype'");
-    $columns_exists = (mysql_num_rows($check_db))?TRUE:FALSE;
-    if (!$columns_exists) {
-        mysql_query("ALTER TABLE `".$table_name_yabp."` ADD `entry_buttontype` INT(1) NOT NULL DEFAULT '1', ADD `entry_putincart` INT(1) NOT NULL, ADD `entry_recordimpressions` INT(1) NOT NULL, ADD `entry_openinnewtab` INT(1) NOT NULL, ADD `entry_style` INT(1) NOT NULL");
+        
+    $check_db = (int) $wpdb->get_var("SELECT CHARACTER_MAXIMUM_LENGTH FROM `information_schema.columns` WHERE table_name='".$table_name_yabp_items."' AND column_name = 'item_title' AND table_schema = '".DB_NAME."'");
+    if ($check_db < 101) { 
+        $wpdb->query("ALTER TABLE `".$table_name_yabp_items."` MODIFY item_title VARCHAR(500)");
+        $wpdb->query("ALTER TABLE `".$table_name_yabp_items."` MODIFY item_subtitle VARCHAR(500)");
+    }    
+    $check_db = $wpdb->get_results("SHOW COLUMNS FROM `".$table_name_yabp."` LIKE 'entry_buttontype'");
+    if (!$check_db) {
+        $wpdb->query("ALTER TABLE `".$table_name_yabp."` ADD `entry_buttontype` INT(1) NOT NULL DEFAULT '1', ADD `entry_putincart` INT(1) NOT NULL, ADD `entry_recordimpressions` INT(1) NOT NULL, ADD `entry_openinnewtab` INT(1) NOT NULL, ADD `entry_style` INT(1) NOT NULL");
         delete_option('yabp_styling_item_button_usealternative');
         delete_option('yabp_styling_item_button_useviewbutton');
         delete_option('yabp_item_getimpressions');
     }    
-    $check_db = mysql_query("SHOW COLUMNS FROM `".$table_name_yabp."` LIKE 'entry_imgontop'");
-    $columns_exists = (mysql_num_rows($check_db))?TRUE:FALSE;
-    if (!$columns_exists) {
-        mysql_query("ALTER TABLE `".$table_name_yabp."` ADD `entry_imgontop` INT(1) NOT NULL");
+    $check_db = $wpdb->get_results("SHOW COLUMNS FROM `".$table_name_yabp."` LIKE 'entry_imgontop'");
+    if (!$check_db) {
+        $wpdb->query("ALTER TABLE `".$table_name_yabp."` ADD `entry_imgontop` INT(1) NOT NULL");
     }    
     
     if (!get_option('yabp_add_item_item_count')) { update_option('yabp_add_item_item_count', $yabp_add_item_item_count); }
     if (!get_option('yabp_itemlist_count')) { update_option('yabp_itemlist_count', $yabp_itemlist_count); }
-    if (!get_option('yabp_item_textlink_text')) { update_option('yabp_item_textlink_text', $yabp_item_textlink_text); }
+    if (!get_option('yabp_item_textlink_text')) { update_option('yabp_item_textlink_text', __($yabp_item_textlink_text, 'yabp')); }
                                                          
     $intervals = array(1, 2, 3);
     foreach ($intervals as $interv) {
@@ -269,7 +272,7 @@ function yabp_forms() {
         else { $_POST['yabp_itemlist_count'] = (int) $_POST['yabp_itemlist_count']; }        
         update_option('yabp_itemlist_count', $_POST['yabp_itemlist_count']);
 
-        if (empty($_POST['yabp_item_textlink_text'])) { $_POST['yabp_item_textlink_text'] = $yabp_item_textlink_text; }
+        if (empty($_POST['yabp_item_textlink_text'])) { $_POST['yabp_item_textlink_text'] = __($yabp_item_textlink_text, 'yabp'); }
         update_option('yabp_item_textlink_text', $_POST['yabp_item_textlink_text']);
         
         if (!is_numeric($_POST['yabp_styling_item_title_fontsize']) || $_POST['yabp_styling_item_title_fontsize'] < $yabp_styling_item_fontsize_lowlimit || $_POST['yabp_styling_item_title_fontsize'] > $yabp_styling_item_fontsize_highlimit) { $_POST['yabp_styling_item_title_fontsize'] = null; }
@@ -371,17 +374,21 @@ function yabp_add_item_new($bolid, $check=false, $returnid=false) {
     if (isset($bolid)) {
         global $wpdb, $table_name_yabp;
         if ($check) { 
-            if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_bolid = '".mysql_real_escape_string($bolid)."'")) { return true; }
+            if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_bolid = '".esc_sql($bolid)."'")) { return true; }
             else { return false; }
         }
         else {         
-            if ($wpdb->query("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_bolid = '".mysql_real_escape_string($bolid)."'")) { return false; }
+            if ($wpdb->query("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_bolid = '".esc_sql($bolid)."'")) { return false; }
             else { 
                 if ($returnid) {
-                    $wpdb->query("INSERT INTO `".$table_name_yabp."` (entry_id, entry_bolid, entry_thumb, entry_showthumb, entry_showprice, entry_showlistprice, entry_showtitle, entry_showsubtitle, entry_showavailability, entry_showrating, entry_showbutton, entry_updateinterval, entry_buttontype, entry_putincart, entry_recordimpressions, entry_openinnewtab, entry_style) VALUES ('', '".mysql_real_escape_string($bolid)."', '3', '1', '1', '1', '1', '1', '1', '1', '1', '3', '1', '0', '1', '1', '1')");
-                    return mysql_insert_id();                    
+                    $bolid = esc_sql($bolid);                
+                    $wpdb->insert($table_name_yabp, array('entry_id' => '', 'entry_bolid' => $bolid, 'entry_thumb' => 3, 'entry_showthumb' => 1, 'entry_showprice' => 1, 'entry_showlistprice' => 1, 'entry_showtitle' => 1, 'entry_showsubtitle' => 1, 'entry_showavailability' => 1, 'entry_showrating' => 1, 'entry_showbutton' => 1, 'entry_updateinterval' => 3, 'entry_buttontype' => 1, 'entry_putincart' => 0, 'entry_recordimpressions' => 1, 'entry_openinnewtab' => 1, 'entry_style' => 1));                    
+                    return $wpdb->insert_id;
                 }
-                else { return $wpdb->query("INSERT INTO `".$table_name_yabp."` (entry_id, entry_bolid, entry_thumb, entry_showthumb, entry_showprice, entry_showlistprice, entry_showtitle, entry_showsubtitle, entry_showavailability, entry_showrating, entry_showbutton, entry_updateinterval, entry_buttontype, entry_putincart, entry_recordimpressions, entry_openinnewtab, entry_style) VALUES ('', '".mysql_real_escape_string($bolid)."', '3', '1', '1', '1', '1', '1', '1', '1', '1', '3', '1', '0', '1', '1', '1')"); }
+                else { 
+                    $bolid = esc_sql($bolid);                
+                    return $wpdb->insert($table_name_yabp, array('entry_id' => '', 'entry_bolid' => $bolid, 'entry_thumb' => 3, 'entry_showthumb' => 1, 'entry_showprice' => 1, 'entry_showlistprice' => 1, 'entry_showtitle' => 1, 'entry_showsubtitle' => 1, 'entry_showavailability' => 1, 'entry_showrating' => 1, 'entry_showbutton' => 1, 'entry_updateinterval' => 3, 'entry_buttontype' => 1, 'entry_putincart' => 0, 'entry_recordimpressions' => 1, 'entry_openinnewtab' => 1, 'entry_style' => 1));
+                }
             }
         }
     }
@@ -392,7 +399,7 @@ function yabp_add_item_replace($entry_id, $bolid) {
     if (isset($entry_id) && is_numeric($entry_id) && isset($bolid)) {
         global $wpdb, $table_name_yabp;
 
-        if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") && $wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") != $bolid) { return $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_bolid = '".$bolid."' WHERE entry_id = '".mysql_real_escape_string($entry_id)."'"); }
+        if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") && $wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") != $bolid) { return $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_bolid = '".$bolid."' WHERE entry_id = '".esc_sql($entry_id)."'"); }
         else { return false; }
     }
     else { return false; }
@@ -402,7 +409,7 @@ function yabp_cron_updateinterval_check_number($interval) {
     global $wpdb, $table_name_yabp;
 
     if (isset($interval) && is_numeric($interval)) {
-        if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".mysql_real_escape_string($interval)."'")) { return $wpdb->get_var("SELECT COUNT(entry_id) FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".mysql_real_escape_string($interval)."'"); }
+        if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".esc_sql($interval)."'")) { return $wpdb->get_var("SELECT COUNT(entry_id) FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".esc_sql($interval)."'"); }
         else { return false; }        
     }
     else { return false; }
@@ -412,7 +419,7 @@ function yabp_entry_bolid_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'")) { return $wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'"); }
+        if ($wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
         else { return false; }                
     }
     else { return false; }
@@ -422,7 +429,7 @@ function yabp_entry_updateinterval_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_updateinterval FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'")) { return $wpdb->get_var("SELECT entry_updateinterval FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'"); }
+        if ($wpdb->get_var("SELECT entry_updateinterval FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_updateinterval FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
         else { return false; }                
     }
     else { return false; }
@@ -434,8 +441,8 @@ function yabp_entry_thumbsize_via_entry_id($entry_id, $backend=false) {
     if (isset($entry_id) && is_numeric($entry_id)) {
         
         if ($backend) {
-            if ($wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'")) {
-                $thumb_size = $wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'");
+            if ($wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) {
+                $thumb_size = $wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'");
                 switch ($thumb_size) {
                     case 1:
                         return "item_xsthumb";
@@ -453,7 +460,7 @@ function yabp_entry_thumbsize_via_entry_id($entry_id, $backend=false) {
             else { return false; }                
         }
         else {
-            if ($wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'")) { return $wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'"); }
+            if ($wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
             else { return false; }                
         }
     }
@@ -464,7 +471,7 @@ function yabp_entry_buttontype_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) {
-        if ($wpdb->get_var("SELECT entry_buttontype FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'")) { return $wpdb->get_var("SELECT entry_buttontype FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'"); }
+        if ($wpdb->get_var("SELECT entry_buttontype FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_buttontype FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
         else { return false; }                
     }
     else { return false; }
@@ -474,7 +481,7 @@ function yabp_entry_showthumb_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showthumb FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_showthumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -484,7 +491,7 @@ function yabp_entry_showprice_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showprice FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_showprice FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -494,7 +501,7 @@ function yabp_entry_showlistprice_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showlistprice FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_showlistprice FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -504,7 +511,7 @@ function yabp_entry_showtitle_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showtitle FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_showtitle FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -514,7 +521,7 @@ function yabp_entry_showsubtitle_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showsubtitle FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_showsubtitle FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -524,7 +531,7 @@ function yabp_entry_showavailability_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showavailability FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_showavailability FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -534,7 +541,7 @@ function yabp_entry_showrating_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showrating FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_showrating FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -544,7 +551,7 @@ function yabp_entry_showbutton_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showbutton FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_showbutton FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -554,7 +561,7 @@ function yabp_entry_putincart_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_putincart FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_putincart FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -564,7 +571,7 @@ function yabp_entry_recordimpressions_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_recordimpressions FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_recordimpressions FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -574,7 +581,7 @@ function yabp_entry_openinnewtab_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_openinnewtab FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_openinnewtab FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -584,7 +591,7 @@ function yabp_entry_imgontop_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_imgontop FROM `".$table_name_yabp."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'") == 1) { return true; }
+        if ($wpdb->get_var("SELECT entry_imgontop FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
         else { return false; }                
     }
     else { return false; }
@@ -594,7 +601,7 @@ function yabp_item_title_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp_items;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT item_title FROM `".$table_name_yabp_items."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'")) { return $wpdb->get_var("SELECT item_title FROM `".$table_name_yabp_items."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'"); }
+        if ($wpdb->get_var("SELECT item_title FROM `".$table_name_yabp_items."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT item_title FROM `".$table_name_yabp_items."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
         else { return false; }                
     }
     else { return false; }
@@ -604,7 +611,7 @@ function yabp_item_value_via_column_name($entry_id, $column_name) {
     global $wpdb, $table_name_yabp_items;
     
     if (isset($entry_id) && is_numeric($entry_id) && isset($column_name) && ($column_name == 'item_title' || $column_name == 'item_subtitle' || $column_name == 'item_externalurl' || $column_name == 'item_afflink' || $column_name == 'item_xlthumb' || $column_name == 'item_lthumb' || $column_name == 'item_mthumb' || $column_name == 'item_sthumb' || $column_name == 'item_xsthumb' || $column_name == 'item_price' || $column_name == 'item_listprice' || $column_name == 'item_availability' || $column_name == 'item_availabilitycode' || $column_name == 'item_rating' || $column_name == 'item_ratingspan' || $column_name == 'item_productid' || $column_name == 'time')) {
-        if ($wpdb->get_var("SELECT ".mysql_real_escape_string($column_name)." FROM `".$table_name_yabp_items."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'")) { return $wpdb->get_var("SELECT ".mysql_real_escape_string($column_name)." FROM `".$table_name_yabp_items."` WHERE entry_id = '".mysql_real_escape_string($entry_id)."'"); }
+        if ($wpdb->get_var("SELECT ".esc_sql($column_name)." FROM `".$table_name_yabp_items."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT ".esc_sql($column_name)." FROM `".$table_name_yabp_items."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
         else { return false; }                
     }
     else { return false; }
@@ -668,10 +675,10 @@ function yabp_item_update_via_entry_id($entry_id) {
         $item_afflink = $yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=TXL&amp;url=".urlencode($item_externalurl)."&amp;name=".urlencode(strtolower($item_title));
         
         if (yabp_item_title_via_entry_id($entry_id)) {            
-            return $wpdb->query("UPDATE `".$table_name_yabp_items."` SET item_title = '".mysql_real_escape_string($item_title)."', item_subtitle = '".mysql_real_escape_string($item_subtitle)."', item_externalurl = '".mysql_real_escape_string($item_externalurl)."', item_afflink = '".mysql_real_escape_string($item_afflink)."', item_xlthumb = '".mysql_real_escape_string($item_xlthumb)."', item_lthumb = '".mysql_real_escape_string($item_lthumb)."', item_mthumb = '".mysql_real_escape_string($item_mthumb)."', item_sthumb = '".mysql_real_escape_string($item_sthumb)."', item_xsthumb = '".mysql_real_escape_string($item_xsthumb)."', item_price = '".mysql_real_escape_string($item_price)."', item_listprice = '".mysql_real_escape_string($item_listprice)."', item_availability = '".mysql_real_escape_string($item_availability)."', item_availabilitycode = '".mysql_real_escape_string($item_availabilitycode)."', item_rating = '".mysql_real_escape_string($item_rating)."', item_ratingspan = '".mysql_real_escape_string($item_ratingspan)."', time = '".mysql_real_escape_string($time)."' WHERE entry_id = '".mysql_real_escape_string($entry_id)."'");
+            return $wpdb->query("UPDATE `".$table_name_yabp_items."` SET item_title = '".esc_sql($item_title)."', item_subtitle = '".esc_sql($item_subtitle)."', item_externalurl = '".esc_sql($item_externalurl)."', item_afflink = '".esc_sql($item_afflink)."', item_xlthumb = '".esc_sql($item_xlthumb)."', item_lthumb = '".esc_sql($item_lthumb)."', item_mthumb = '".esc_sql($item_mthumb)."', item_sthumb = '".esc_sql($item_sthumb)."', item_xsthumb = '".esc_sql($item_xsthumb)."', item_price = '".esc_sql($item_price)."', item_listprice = '".esc_sql($item_listprice)."', item_availability = '".esc_sql($item_availability)."', item_availabilitycode = '".esc_sql($item_availabilitycode)."', item_rating = '".esc_sql($item_rating)."', item_ratingspan = '".esc_sql($item_ratingspan)."', time = '".esc_sql($time)."' WHERE entry_id = '".esc_sql($entry_id)."'");
         }
         else {
-            return $wpdb->query("INSERT INTO `".$table_name_yabp_items."` (item_id, entry_id, item_title, item_subtitle, item_externalurl, item_afflink, item_xlthumb, item_lthumb, item_mthumb, item_sthumb, item_xsthumb, item_price, item_listprice, item_availability, item_availabilitycode, item_rating, item_ratingspan, time) VALUES ('', '".mysql_real_escape_string($entry_id)."', '".mysql_real_escape_string($item_title)."', '".mysql_real_escape_string($item_subtitle)."', '".mysql_real_escape_string($item_externalurl)."', '".mysql_real_escape_string($item_afflink)."', '".mysql_real_escape_string($item_xlthumb)."', '".mysql_real_escape_string($item_lthumb)."', '".mysql_real_escape_string($item_mthumb)."', '".mysql_real_escape_string($item_sthumb)."', '".mysql_real_escape_string($item_xsthumb)."', '".mysql_real_escape_string($item_price)."', '".mysql_real_escape_string($item_listprice)."', '".mysql_real_escape_string($item_availability)."', '".mysql_real_escape_string($item_availabilitycode)."', '".mysql_real_escape_string($item_rating)."', '".mysql_real_escape_string($item_ratingspan)."', '".mysql_real_escape_string($time)."')");
+            return $wpdb->query("INSERT INTO `".$table_name_yabp_items."` (item_id, entry_id, item_title, item_subtitle, item_externalurl, item_afflink, item_xlthumb, item_lthumb, item_mthumb, item_sthumb, item_xsthumb, item_price, item_listprice, item_availability, item_availabilitycode, item_rating, item_ratingspan, time) VALUES ('', '".esc_sql($entry_id)."', '".esc_sql($item_title)."', '".esc_sql($item_subtitle)."', '".esc_sql($item_externalurl)."', '".esc_sql($item_afflink)."', '".esc_sql($item_xlthumb)."', '".esc_sql($item_lthumb)."', '".esc_sql($item_mthumb)."', '".esc_sql($item_sthumb)."', '".esc_sql($item_xsthumb)."', '".esc_sql($item_price)."', '".esc_sql($item_listprice)."', '".esc_sql($item_availability)."', '".esc_sql($item_availabilitycode)."', '".esc_sql($item_rating)."', '".esc_sql($item_ratingspan)."', '".esc_sql($time)."')");
         }        
     }
     else { return false; }
@@ -919,7 +926,7 @@ function yabp_add_item() {
                         
                 foreach ($phpobject->Products as $item) {                
                     $id = $item -> Id;
-                    $thumbnailurl =  preg_replace("/^http:/i", "https:", $item -> Images[1]-> Url);
+                    $thumbnailurl = preg_replace("/^http:/i", "https:", $item -> Images[1]-> Url);
                     $title = $item -> Title;
                     $rating = $item -> Rating;
                     $price = doubleval($item -> OfferData -> Offers[0] -> Price);
@@ -1072,7 +1079,7 @@ function yabp_itemlist() {
     <?php
         $i = 0;
         foreach ($items_entries as $item_entry) {            
-            $item = $wpdb->get_row("SELECT * FROM `".$table_name_yabp_items."` WHERE entry_id = '".mysql_real_escape_string($item_entry->entry_id)."'");            
+            $item = $wpdb->get_row("SELECT * FROM `".$table_name_yabp_items."` WHERE entry_id = '".esc_sql($item_entry->entry_id)."'");            
             $i++;
             ?>
             <tr>
@@ -1157,7 +1164,7 @@ function yabp_itemlist_init() {
             $column = $_GET['action'];            
             if ($_GET['value'] == 'true') { $value = 1; }
             else { $value = 0; }
-            $wpdb->query("UPDATE `".$table_name_yabp."` SET ".mysql_real_escape_string($column)." = '".mysql_real_escape_string($value)."' WHERE entry_id = '".mysql_real_escape_string($entry_id)."'");                        
+            $wpdb->query("UPDATE `".$table_name_yabp."` SET ".esc_sql($column)." = '".esc_sql($value)."' WHERE entry_id = '".esc_sql($entry_id)."'");                        
             
             if (isset($_GET['p']) && is_numeric($_GET['p'])) { $p = $_GET['p']; }
             else { $p = 1; }
@@ -1174,7 +1181,7 @@ function yabp_itemlist_init() {
             $updateinterval_formated = yabp_format_updateinterval($updateinterval, true);            
             
             $oldvalue = yabp_entry_updateinterval_via_entry_id($entry_id);
-            $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_updateinterval = '".mysql_real_escape_string($updateinterval_formated)."' WHERE entry_id = '".mysql_real_escape_string($entry_id)."'");
+            $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_updateinterval = '".esc_sql($updateinterval_formated)."' WHERE entry_id = '".esc_sql($entry_id)."'");
             if (yabp_cron_updateinterval_check_number($oldvalue) < 1) { yabp_cron_handle_eventstatus($oldvalue, false); }
             elseif (yabp_cron_updateinterval_check_number($updateinterval_formated) == 1) { yabp_cron_handle_eventstatus($updateinterval_formated, true); }
 
@@ -1187,7 +1194,7 @@ function yabp_itemlist_init() {
             $thumb_size = trim($_POST['update_value']);            
             if ($thumb_size == "") { die(yabp_format_thumbsize(yabp_entry_thumbsize_via_entry_id($entry_id))); }            
             $thumb_size_formated = yabp_format_thumbsize($thumb_size, true);            
-            $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_thumb = '".mysql_real_escape_string($thumb_size_formated)."' WHERE entry_id = '".mysql_real_escape_string($entry_id)."'");
+            $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_thumb = '".esc_sql($thumb_size_formated)."' WHERE entry_id = '".esc_sql($entry_id)."'");
             die(trim($thumb_size));
         }    
         elseif (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['action']) && $_GET['action'] == 'edititembuttontype') {
@@ -1197,7 +1204,7 @@ function yabp_itemlist_init() {
             $buttontype = trim($_POST['update_value']);            
             if ($buttontype == "") { die(yabp_format_buttontype(yabp_entry_buttontype_via_entry_id($entry_id))); }            
             $buttontype_formated = yabp_format_buttontype($buttontype, true);                        
-            $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_buttontype = '".mysql_real_escape_string($buttontype_formated)."' WHERE entry_id = '".mysql_real_escape_string($entry_id)."'");
+            $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_buttontype = '".esc_sql($buttontype_formated)."' WHERE entry_id = '".esc_sql($entry_id)."'");
             die(trim($buttontype));
         }    
     }
@@ -1330,7 +1337,7 @@ add_action('yabp_cron_event_daily', 'yabp_cron_event_daily_do');
 function yabp_cron_event_hourly_do() {
     global $wpdb, $table_name_yabp; 
     $interval = 1; 
-    $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".mysql_real_escape_string($interval)."'");
+    $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".esc_sql($interval)."'");
     foreach ($entries as $entry) {            
         yabp_item_update_via_entry_id($entry->entry_id);
     }
@@ -1339,7 +1346,7 @@ function yabp_cron_event_hourly_do() {
 function yabp_cron_event_twicedaily_do() {
     global $wpdb, $table_name_yabp; 
     $interval = 2;   
-    $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".mysql_real_escape_string($interval)."'");
+    $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".esc_sql($interval)."'");
     foreach ($entries as $entry) {            
         yabp_item_update_via_entry_id($entry->entry_id);
     }      
@@ -1348,7 +1355,7 @@ function yabp_cron_event_twicedaily_do() {
 function yabp_cron_event_daily_do() {
     global $wpdb, $table_name_yabp; 
     $interval = 3;
-    $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".mysql_real_escape_string($interval)."'");
+    $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".esc_sql($interval)."'");
     foreach ($entries as $entry) {            
         yabp_item_update_via_entry_id($entry->entry_id);
     }    

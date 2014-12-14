@@ -4,7 +4,7 @@ Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
 Tested up to: 4.0.1
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ A powerful plugin to easily integrate bol.com products in your blog posts or at 
 
 == Description ==
 
-The next generation bol.com plugin for WordPress is here. This powerful plugin is designed to allow you to easily display selected products in your blog posts and on your pages. At the control panel, you enter your bol.com Open API Access key and your siteid from the bol.com Partner Program. The next step is to search in the bol.com Catalog for the products you want to display. After the desired products have been added, you retrieve their shortcodes that allow you to display these products anywhere in your blog post or at your page.
+The next generation bol.com plugin for WordPress is here. This powerful plugin is designed to allow you to easily display selected products in your blog posts and on your pages. At the control panel, you enter your bol.com Open API Access key and your siteid from the bol.com Partner Program. The next step is to search in the bol.com Catalog for the products you want to display. After the desired products have been added, you retrieve their shortcodes that allow you to display these products anywhere on your website.
 
 Displaying bol.com products in blog posts and on pages is nothing new. Therefore this plugin takes this to the next level. The product data as price, delivery time and rating are updated automatically at a selected interval. Its display and style can be highly customized. You can choose to show the (new) buttons of the Partner Program, and you can choose to record the impressions of your products on your website in the Program. And last but not least, the display of products is designed to be integrated in desktop, mobile and responsive themes.
 
@@ -93,6 +93,10 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 
 == Changelog ==
 
+= 1.0.7 =
+* Fixed the display of long titles and subtitles.
+* Applied several code improvements (including better SQL compatibility).
+
 = 1.0.6 =
 * Improved responsive display of items.
 * Improved display of unavailable items.
@@ -126,6 +130,9 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.7 =
+Fixed the display of long titles and subtitles, and applied several code improvements.
 
 = 1.0.6 =
 Improved responsive design and display of unavailable items. Added option to replace items and to put product thumbnails above the content.
