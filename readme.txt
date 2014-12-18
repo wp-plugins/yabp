@@ -30,6 +30,10 @@ Displaying bol.com products in blog posts and on pages is nothing new. Therefore
 
 A page with a demo product displayed with use of this plugin can be found [here](http://tromit.nl/naslagwerk/ipad/).
 
+= Video tutorial (Dutch) =
+
+[youtube http://www.youtube.com/watch?v=tktH1DvJIb8]
+
 = Support =
 
 Please take a look at the FAQ first. If you have another question or request, or if you found a bug, please contact the developer. You can send an [email](http://tromit.nl/diensten/wordpress-plugins/) or, send a tweet [@MarofNL](https://twitter.com/MarofNL).
