@@ -1,6 +1,6 @@
 /*
     Plugin Name: Yet Another bol.com Plugin
-    Version: 1.0.7
+    Version: 1.0.8
     Author: Mitchel Troost
 */
 

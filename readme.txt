@@ -4,7 +4,7 @@ Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
 Tested up to: 4.1
-Stable tag: 1.0.7
+Stable tag: 1.0.8
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,7 @@ Displaying bol.com products in blog posts and on pages is nothing new. Therefore
 
 * Easily display bol.com products anywhere in blog posts or at pages
 * User-friendly process to add products to your database from the Catalog
+* Search for products in either the Dutch or the Belgium Catalog
 * Prices, delivery times and ratings are automatically updated
 * Highly customizable layout, and you can choose between product links and the new bol.com buttons
 * Choose products have to be opened in a new tab and/or be put directly in the bol.com Cart
@@ -97,6 +98,11 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 
 == Changelog ==
 
+= 1.0.8 =
+* Added the possibility to search for products in the Belgium product catalog
+* Added the option to show a set up text when a product is shipped for free
+* Fixed minor bugs
+
 = 1.0.7 =
 * Fixed the display of long titles and subtitles.
 * Applied several code improvements (including better SQL compatibility).
@@ -134,6 +140,9 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.8 =
+Search for products in the Belgium product catalog and show text when a product is shipped for free.
 
 = 1.0.7 =
 Fixed the display of long titles and subtitles, and applied several code improvements.
