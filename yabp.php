@@ -2,8 +2,8 @@
 /*
     Plugin Name: Yet Another bol.com Plugin
     Plugin URI: http://tromit.nl/diensten/wordpress-plugins/
-    Description: A powerful plugin to easily integrate bol.com products in your blog posts or at your pages to earn money with the bol.com Partner Program.
-    Version: 1.0.8
+    Description: A powerful plugin to easily integrate bol.com products and deals in your blog posts or at your pages to earn money with the bol.com Partner Program.
+    Version: 1.1
     Author: Mitchel Troost
     Author URI: http://tromit.nl/
     License: GPL2
@@ -11,7 +11,7 @@
 */
 
 /*  
-    Copyright 2014  Mitchel Troost  (email: mitchel.troost@gmail.com)
+    Copyright 2014-2015  Mitchel Troost  (email: mitchel.troost@gmail.com)
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License, version 2, as 
@@ -35,11 +35,13 @@
 
 global $wpdb;
 
-$yabp_version = "1.0.8";
+$yabp_version = "1.1";
 $table_name_yabp = $wpdb->prefix . 'yabp';
 $table_name_yabp_items = $wpdb->prefix . 'yabp_items';
+$table_name_yabp_deals = $wpdb->prefix . 'yabp_deals';
+$table_name_yabp_deals_items = $wpdb->prefix . 'yabp_deals_items';
 $yabp_partnerlink_prefix = "https://partnerprogramma.bol.com/click/click?p=1&amp;t=url&amp;s=";
-$yabp_impression_imglink_prefix = "http://partnerprogramma.bol.com/click/impression?p=1&amp;s=";
+$yabp_impression_imglink_prefix = "https://partnerprogramma.bol.com/click/impression?p=1&amp;s=";
 $yabp_open_api_link = "https://developers.bol.com/documentatie/open-api/aanmeldformulier-api-toegang/";
 $yabp_partnerprogram_link = "https://partnerprogramma.bol.com/partner/affiliate/account.do";
 $yabp_bolcom_buy_button = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_koop_dark_large.gif";
@@ -47,18 +49,32 @@ $yabp_bolcom_buy_button_alt = "https://www.bol.com/nl/upload/partnerprogramma/pr
 $yabp_bolcom_view_button = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_bekijk_dark_large.gif";
 $yabp_bolcom_view_button_alt = "https://www.bol.com/nl/upload/partnerprogramma/promobtn/btn_promo_bekijk_light_large.gif";
 $yabp_bolcom_putincart_link = "http://www.bol.com/nl/inwinkelwagentje.html?productId=";
+$yabp_bolcom_deals_feed_link = "http://www.bol.com/nl/DailyOffer/offers.html";
+$yabp_deals_updateinterval_default = 1;
+$yabp_deals_update_startofweek = 2;
 $yabp_add_item_item_defaultcountry = 1;
 $yabp_add_item_item_count = 10;
 $yabp_add_item_item_count_limit = 50;
 $yabp_itemlist_count = 10;
+$yabp_dealslist_count = 10;
+$yabp_deals_daydeals_keywords = array(1, 'dagdeal_nlebooks');
+$yabp_deals_daydeals_keywords_strings = array('Global daily deal', 'Dutch ebooks daily deal');
+$yabp_deals_keywords = array('sha', 'm&g', 'computer', 'software', 'kth', 'sce', 't&k', 'mob', 'ava', 'baby', 'games', 'nav', 'mda', 'dier', 'sda', 'mobile', 'ukusbooks', 'netwerk', 'hnt', 'speelgoed', 'sto', 'wonen', 'ukusebook', 'dataop', 'muziek', 'elektronica', 'dvd', 'nlebooks', 'nlbooks', 'tuin', 'bpk', 'audio');
+$yabp_deals_keywords_strings = array('Jewelry, Watches and Bracelets', 'Beauty and Health', 'Computer', 'Software', 'Kitchen, Dining and Household', 'Tv, Camera and Audio', 'Garden and DIY', 'Mobile telephones', 'Music and Movie', 'Baby', 'Games', 'Navigation', 'Major appliance', 'Animals', 'Household appliances', 'Mobile', 'English books', 'Network', 'Home cinema', 'Toys', 'Sports and Free time', 'Living', 'English eBooks', 'Data storage', 'Music', 'Electronics', 'DVD', 'Dutch eBooks', 'Dutch books', 'Garden', 'Baby and Child', 'Audio');
+$yabp_deal_expired_option_default = 1;
 $yabp_styling_item_fontsize_lowlimit = 5;
 $yabp_styling_item_fontsize_highlimit = 30;
 $yabp_item_freeshipping_limit = 20;
 $yabp_item_freeshipping_text = "Free shipping!";
 $yabp_item_textlink_text = "Buy now";
+$yabp_deals_countdown_text = "Just [countdown] left for this deal!";
+$yabp_deals_countdown_text_expired = "This deal has been expired!";
+$yabp_deals_countdown_template = "[countdown]";
 $yabp_item_shortcode_format = "[yabp %entry_id%]";
+$yabp_deals_shortcode_format = "[yabp-deal %entry_id%]";
 $yabp_item_time_format = "Y-m-d H:i:s";
 $yabp_cron_defaulttime = "08:00";
+$yabp_cron_deals_defaulttime = "00:01";
 $api_server = 'api.bol.com';
 $api_port = '443';
 
@@ -78,6 +94,9 @@ function yabp_menu() {
     if(function_exists('add_submenu_page')){
         add_submenu_page('yabp', __('Product list', 'yabp'), __('Product list', 'yabp'), 'manage_options', 'yabp-itemlist', 'yabp_itemlist');
     }
+    if(function_exists('add_submenu_page')){
+        add_submenu_page('yabp', __('Deals', 'yabp'), __('Deals', 'yabp'), 'manage_options', 'yabp-deals', 'yabp_deals');
+    }
 }
 
 add_action('admin_menu', 'yabp_menu');
@@ -92,7 +111,7 @@ function yabp_init(){
 }
 
 function yabp_install(){
-    global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_version, $yabp_add_item_item_count, $yabp_itemlist_count, $yabp_item_textlink_text, $yabp_item_freeshipping_text, $yabp_add_item_item_defaultcountry;
+    global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_version, $yabp_add_item_item_count, $yabp_itemlist_count, $yabp_item_textlink_text, $yabp_item_freeshipping_text, $yabp_add_item_item_defaultcountry, $table_name_yabp_deals, $table_name_yabp_deals_items, $yabp_deals_updateinterval_default, $yabp_deals_countdown_text, $yabp_dealslist_count, $yabp_deals_countdown_text_expired, $yabp_deal_expired_option_default;
         
     $sql = "CREATE TABLE IF NOT EXISTS ".$table_name_yabp."(
         entry_id INT auto_increment NOT NULL,
@@ -144,6 +163,52 @@ function yabp_install(){
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);    
     
+    $sql = "CREATE TABLE IF NOT EXISTS ".$table_name_yabp_deals."(
+        entry_id INT auto_increment NOT NULL,
+        entry_updateinterval INT(1) NOT NULL,
+        entry_keyword VARCHAR(50) NOT NULL,
+        entry_showthumb INT(1) NOT NULL,
+        entry_showprice INT(1) NOT NULL,
+        entry_showlistprice INT(1) NOT NULL,
+        entry_showtitle INT(1) NOT NULL,
+        entry_showdescription INT(1) NOT NULL,
+        entry_showfreeshipping INT(1) NOT NULL,
+        entry_showrating INT(1) NOT NULL,
+        entry_showbutton INT(1) NOT NULL,
+        entry_buttontype INT(1) NOT NULL DEFAULT '1',
+        entry_putincart INT(1) NOT NULL,
+        entry_recordimpressions INT(1) NOT NULL,
+        entry_openinnewtab INT(1) NOT NULL,
+        entry_imgontop INT(1) NOT NULL,
+        entry_style INT(1) NOT NULL,
+        entry_showcountdown INT(1) NOT NULL,
+        PRIMARY KEY(entry_id)) ENGINE=MyISAM  DEFAULT CHARSET=utf8";
+        
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);    
+    
+    $sql = "CREATE TABLE IF NOT EXISTS ".$table_name_yabp_deals_items."(
+        item_id INT auto_increment NOT NULL,
+        entry_id INT NOT NULL,
+        item_offerid VARCHAR(100) NOT NULL,
+        item_bolid BIGINT NOT NULL,
+        item_title VARCHAR(500) NOT NULL,
+        item_description TEXT,
+        item_startdate INT NOT NULL,
+        item_enddate INT NOT NULL,
+        item_externalurl TEXT NOT NULL,
+        item_afflink TEXT NOT NULL,
+        item_thumb TEXT,
+        item_price VARCHAR(10) NOT NULL,
+        item_listprice VARCHAR(10) NOT NULL,
+        item_rating INT NOT NULL,
+        item_ratingspan TEXT NOT NULL,
+        time INT NOT NULL,
+        PRIMARY KEY(item_id)) ENGINE=MyISAM  DEFAULT CHARSET=utf8";
+        
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);    
+    
     update_option('yabp_version', $yabp_version);
     
     $check_db = $wpdb->get_results("SHOW COLUMNS FROM `".$table_name_yabp."` LIKE 'entry_country'");
@@ -167,18 +232,24 @@ function yabp_install(){
     $check_db = $wpdb->get_results("SHOW COLUMNS FROM `".$table_name_yabp."` LIKE 'entry_imgontop'");
     if (!$check_db) {
         $wpdb->query("ALTER TABLE `".$table_name_yabp."` ADD `entry_imgontop` INT(1) NOT NULL");
-    }    
+    }                                        
     
     if (!get_option('yabp_add_item_item_count')) { update_option('yabp_add_item_item_count', $yabp_add_item_item_count); }
     if (!get_option('yabp_itemlist_count')) { update_option('yabp_itemlist_count', $yabp_itemlist_count); }
+    if (!get_option('yabp_dealslist_count')) { update_option('yabp_dealslist_count', $yabp_dealslist_count); }
     if (!get_option('yabp_item_textlink_text')) { update_option('yabp_item_textlink_text', __($yabp_item_textlink_text, 'yabp')); }
     if (!get_option('yabp_item_freeshipping_text')) { update_option('yabp_item_freeshipping_text', __($yabp_item_freeshipping_text, 'yabp')); }
     if (!get_option('yabp_add_item_item_defaultcountry')) { update_option('yabp_add_item_item_defaultcountry', $yabp_add_item_item_defaultcountry); }
+    if (!get_option('yabp_deals_updatetype')) { update_option('yabp_deals_updatetype', $yabp_deals_updateinterval_default); }
+    if (!get_option('yabp_deals_countdown_text')) { update_option('yabp_deals_countdown_text', __($yabp_deals_countdown_text, 'yabp')); }
+    if (!get_option('yabp_deals_countdown_text_expired')) { update_option('yabp_deals_countdown_text_expired', __($yabp_deals_countdown_text_expired, 'yabp')); }
+    if (!get_option('yabp_deal_expired_option')) { update_option('yabp_deal_expired_option', $yabp_deal_expired_option_default); }
                                                          
     $intervals = array(1, 2, 3);
     foreach ($intervals as $interv) {
         if (yabp_cron_updateinterval_check_number($interv) >= 1) { yabp_cron_handle_eventstatus($interv, true); }
-    }    
+    }        
+    if ($wpdb->get_var("SELECT COUNT(entry_id) FROM `".$table_name_yabp_deals."`") >= 1) { yabp_deals_cron_handle_eventstatus(true); }
 }
 
 function yabp_api_dorequest($httpMethod, $url, $parameters, $content, $sessionId) {
@@ -267,7 +338,7 @@ function yabp_validate_apikey($apikey) {
 }
 
 function yabp_forms() {
-    global $wpdb, $yabp_add_item_item_defaultcountry, $yabp_add_item_item_count, $yabp_add_item_item_count_limit, $yabp_itemlist_count, $yabp_styling_item_fontsize_lowlimit, $yabp_styling_item_fontsize_highlimit, $yabp_item_textlink_text, $yabp_item_freeshipping_text;
+    global $wpdb, $yabp_add_item_item_defaultcountry, $yabp_add_item_item_count, $yabp_add_item_item_count_limit, $yabp_itemlist_count, $yabp_styling_item_fontsize_lowlimit, $yabp_styling_item_fontsize_highlimit, $yabp_item_textlink_text, $yabp_item_freeshipping_text, $yabp_deals_countdown_text, $yabp_dealslist_count, $yabp_deals_countdown_text_expired, $yabp_deal_expired_option_default;
     
     if (isset($_POST['savetype']) && $_POST['savetype'] == 'saveoptions_yabp_options') {
 
@@ -285,16 +356,26 @@ function yabp_forms() {
         else { $_POST['yabp_itemlist_count'] = (int) $_POST['yabp_itemlist_count']; }        
         update_option('yabp_itemlist_count', $_POST['yabp_itemlist_count']);
 
+        if (!is_numeric($_POST['yabp_dealslist_count'])) { $_POST['yabp_dealslist_count'] = $yabp_dealslist_count; }
+        else { $_POST['yabp_dealslist_count'] = (int) $_POST['yabp_dealslist_count']; }        
+        update_option('yabp_dealslist_count', $_POST['yabp_dealslist_count']);
+
         if (empty($_POST['yabp_item_textlink_text'])) { $_POST['yabp_item_textlink_text'] = __($yabp_item_textlink_text, 'yabp'); }
         update_option('yabp_item_textlink_text', $_POST['yabp_item_textlink_text']);
-
-        if (empty($_POST['yabp_item_freeshipping_text'])) { $_POST['yabp_item_freeshipping_text'] = __($yabp_item_freeshipping_text, 'yabp'); }
-        update_option('yabp_item_freeshipping_text', $_POST['yabp_item_freeshipping_text']);
 
         if (!is_numeric($_POST['yabp_add_item_item_defaultcountry'])) { $_POST['yabp_add_item_item_defaultcountry'] = $yabp_add_item_item_defaultcountry; }
         else { $_POST['yabp_add_item_item_defaultcountry'] = (int) $_POST['yabp_add_item_item_defaultcountry']; }        
         update_option('yabp_add_item_item_defaultcountry', $_POST['yabp_add_item_item_defaultcountry']);
-        
+
+        if (empty($_POST['yabp_deals_countdown_text'])) { $_POST['yabp_deals_countdown_text'] = __($yabp_deals_countdown_text, 'yabp'); }
+        update_option('yabp_deals_countdown_text', $_POST['yabp_deals_countdown_text']);        
+        if (empty($_POST['yabp_deals_countdown_text_expired'])) { $_POST['yabp_deals_countdown_text_expired'] = __($yabp_deals_countdown_text_expired, 'yabp'); }
+        update_option('yabp_deals_countdown_text_expired', $_POST['yabp_deals_countdown_text_expired']);        
+
+        if (!is_numeric($_POST['yabp_deal_expired_option'])) { $_POST['yabp_deal_expired_option'] = $yabp_deal_expired_option_default; }
+        else { $_POST['yabp_deal_expired_option'] = (int) $_POST['yabp_deal_expired_option']; }        
+        update_option('yabp_deal_expired_option', $_POST['yabp_deal_expired_option']);    
+
         if (!is_numeric($_POST['yabp_styling_item_title_fontsize']) || $_POST['yabp_styling_item_title_fontsize'] < $yabp_styling_item_fontsize_lowlimit || $_POST['yabp_styling_item_title_fontsize'] > $yabp_styling_item_fontsize_highlimit) { $_POST['yabp_styling_item_title_fontsize'] = null; }
         else { $_POST['yabp_styling_item_title_fontsize'] = (int) $_POST['yabp_styling_item_title_fontsize']; }
         update_option('yabp_styling_item_title_fontsize', $_POST['yabp_styling_item_title_fontsize']);
@@ -313,6 +394,9 @@ function yabp_forms() {
         if (!is_numeric($_POST['yabp_styling_item_freeshipping_fontsize']) || $_POST['yabp_styling_item_freeshipping_fontsize'] < $yabp_styling_item_fontsize_lowlimit || $_POST['yabp_styling_item_freeshipping_fontsize'] > $yabp_styling_item_fontsize_highlimit) { $_POST['yabp_styling_item_freeshipping_fontsize'] = null; }
         else { $_POST['yabp_styling_item_freeshipping_fontsize'] = (int) $_POST['yabp_styling_item_freeshipping_fontsize']; }
         update_option('yabp_styling_item_freeshipping_fontsize', $_POST['yabp_styling_item_freeshipping_fontsize']);
+        if (!is_numeric($_POST['yabp_styling_item_countdown_fontsize']) || $_POST['yabp_styling_item_countdown_fontsize'] < $yabp_styling_item_fontsize_lowlimit || $_POST['yabp_styling_item_countdown_fontsize'] > $yabp_styling_item_fontsize_highlimit) { $_POST['yabp_styling_item_countdown_fontsize'] = null; }
+        else { $_POST['yabp_styling_item_countdown_fontsize'] = (int) $_POST['yabp_styling_item_countdown_fontsize']; }
+        update_option('yabp_styling_item_countdown_fontsize', $_POST['yabp_styling_item_countdown_fontsize']);
         if (!is_numeric($_POST['yabp_styling_item_textlink_fontsize']) || $_POST['yabp_styling_item_textlink_fontsize'] < $yabp_styling_item_fontsize_lowlimit || $_POST['yabp_styling_item_textlink_fontsize'] > $yabp_styling_item_fontsize_highlimit) { $_POST['yabp_styling_item_textlink_fontsize'] = null; }
         else { $_POST['yabp_styling_item_textlink_fontsize'] = (int) $_POST['yabp_styling_item_textlink_fontsize']; }
         update_option('yabp_styling_item_textlink_fontsize', $_POST['yabp_styling_item_textlink_fontsize']);
@@ -329,6 +413,8 @@ function yabp_forms() {
         update_option('yabp_styling_item_availability_fontcolour', $_POST['yabp_styling_item_availability_fontcolour']);
         if (!preg_match('/#([a-f]|[A-F]|[0-9]){3}(([a-f]|[A-F]|[0-9]){3})?\b/', "#".$_POST['yabp_styling_item_freeshipping_fontcolour'])) { $_POST['yabp_styling_item_freeshipping_fontcolour'] = null; }
         update_option('yabp_styling_item_freeshipping_fontcolour', $_POST['yabp_styling_item_freeshipping_fontcolour']);
+        if (!preg_match('/#([a-f]|[A-F]|[0-9]){3}(([a-f]|[A-F]|[0-9]){3})?\b/', "#".$_POST['yabp_styling_item_countdown_fontcolour'])) { $_POST['yabp_styling_item_countdown_fontcolour'] = null; }
+        update_option('yabp_styling_item_countdown_fontcolour', $_POST['yabp_styling_item_countdown_fontcolour']);
         if (!preg_match('/#([a-f]|[A-F]|[0-9]){3}(([a-f]|[A-F]|[0-9]){3})?\b/', "#".$_POST['yabp_styling_item_textlink_fontcolour'])) { $_POST['yabp_styling_item_textlink_fontcolour'] = null; }
         update_option('yabp_styling_item_textlink_fontcolour', $_POST['yabp_styling_item_textlink_fontcolour']);
         
@@ -339,8 +425,9 @@ function yabp_forms() {
 }
 
 function yabp_options() {
-    global $wpdb, $yabp_styling_item_fontsize_lowlimit, $yabp_styling_item_fontsize_highlimit, $yabp_open_api_link, $yabp_partnerprogram_link;
-?>
+    global $wpdb, $yabp_styling_item_fontsize_lowlimit, $yabp_styling_item_fontsize_highlimit, $yabp_open_api_link, $yabp_partnerprogram_link, $yabp_deals_countdown_template;
+
+    ?>
     <div class="wrap">
     <h2>Yet Another bol.com Plugin</h2>
     <h3><?php _e('Options', 'yabp'); ?></h3>
@@ -352,11 +439,17 @@ function yabp_options() {
         <p><?php _e('bol.com Partner Program siteid', 'yabp'); ?>: <input type="text" size="50" value="<?php echo get_option('yabp_siteid')?>" name="yabp_siteid" /><?php if (!get_option('yabp_siteid') || get_option('yabp_siteid') == "") { ?> <a href="<?php echo $yabp_partnerprogram_link; ?>"><?php _e('Retrieve your SiteId', 'yabp'); ?></a><?php } ?></p>
         <p><?php _e('Number of products shown on the \'Add product\' page', 'yabp'); ?>: <input type="text" maxlength="3" size="3" value="<?php echo get_option('yabp_add_item_item_count')?>" name="yabp_add_item_item_count" /></p>
         <p><?php _e('Number of products shown on the \'Product list\' page', 'yabp'); ?>: <input type="text" maxlength="3" size="3" value="<?php echo get_option('yabp_itemlist_count')?>" name="yabp_itemlist_count" /></p>
+        <p><?php _e('Number of deals shown on the \'Deals\' page', 'yabp'); ?>: <input type="text" maxlength="3" size="3" value="<?php echo get_option('yabp_dealslist_count')?>" name="yabp_dealslist_count" /></p>
         <p><?php _e('Text of the text link of the products', 'yabp'); ?>: <input type="text" maxlength="100" size="50" value="<?php echo get_option('yabp_item_textlink_text')?>" name="yabp_item_textlink_text" /></p>
         <p><?php _e('\'Free shipping\' text at the products', 'yabp'); ?>: <input type="text" maxlength="100" size="50" value="<?php echo get_option('yabp_item_freeshipping_text')?>" name="yabp_item_freeshipping_text" /></p>
         <p><?php _e('Default product catalog:', 'yabp'); ?><br />
         <input type="radio" id="yabp_add_item_item_defaultcountry_nl" name="yabp_add_item_item_defaultcountry" value="1" <?php if (get_option('yabp_add_item_item_defaultcountry') == 1) { ?>checked <?php } ?>title="<?php _e('Set the Dutch catalog as the default catalog when searching for new products', 'yabp'); ?>" /> <label for="yabp_add_item_item_defaultcountry_nl" title="<?php _e('Set the Dutch catalog as the default catalog when searching for new products', 'yabp'); ?>"><img src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>img/nl.png" alt="<?php _e('Dutch catalog', 'yabp'); ?>" /> <?php _e('Dutch catalog', 'yabp'); ?></label><br />
         <input type="radio" id="yabp_add_item_item_defaultcountry_be" name="yabp_add_item_item_defaultcountry" value="2" <?php if (get_option('yabp_add_item_item_defaultcountry') == 2) { ?>checked <?php } ?>title="<?php _e('Set the Belgium catalog as the default catalog when searching for new products', 'yabp'); ?>" /> <label for="yabp_add_item_item_defaultcountry_be" title="<?php _e('Set the Belgium catalog as the default catalog when searching for new products', 'yabp'); ?>"><img src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>img/be.png" alt="<?php _e('Belgium catalog', 'yabp'); ?>" /> <?php _e('Belgium catalog', 'yabp'); ?></label></p>
+        <p><?php _e('\'Countdown\' text at the products of the deals', 'yabp'); ?> (<a href="#" style="text-decoration: none;" title="<?php printf(__('Use template code \'%1$s\' to define the remaining time.', 'yabp'), $yabp_deals_countdown_template); ?>">?</a>): <input type="text" maxlength="100" size="50" value="<?php echo get_option('yabp_deals_countdown_text')?>" name="yabp_deals_countdown_text" /></p>                
+        <p><?php _e('\'Countdown\' text at the products when the deal is expired', 'yabp'); ?>: <input type="text" maxlength="100" size="50" value="<?php echo get_option('yabp_deals_countdown_text_expired')?>" name="yabp_deals_countdown_text_expired" /></p>                
+        <p><?php _e('When no deals are available from a displayed category:', 'yabp'); ?><br />
+        <input type="radio" id="yabp_deal_expired_random_product" name="yabp_deal_expired_option" value="1" <?php if (get_option('yabp_deal_expired_option') == 1) { ?>checked <?php } ?>title="<?php _e('Show a random product from the database when no deals can be found for a displayed category', 'yabp'); ?>" /> <label for="yabp_deal_expired_random_product" title="<?php _e('Show a random product from the database when no deals can be found for a displayed category', 'yabp'); ?>"> <?php _e('Show a random product from the database', 'yabp'); ?></label><br />
+        <input type="radio" id="yabp_deal_expired_hide" name="yabp_deal_expired_option" value="2" <?php if (get_option('yabp_deal_expired_option') == 2) { ?>checked <?php } ?>title="<?php _e('Hide the deal completely when no deals can be found for a displayed category', 'yabp'); ?>" /> <label for="yabp_deal_expired_hide" title="<?php _e('Hide the deal completely when no deals can be found for a displayed category', 'yabp'); ?>"> <?php _e('Hide the deal', 'yabp'); ?></label></p>
         <p>&nbsp;</p>
         <p><strong><?php _e('Styling' , 'yabp'); ?></strong></p>
         <p style="font-style: italic;"><?php _e('The use of styling is optional. By default, the plugin uses the style from your current theme. When inserting font sizes and font colours below, you override the default style. The font size is the number in pixels, and the colours in hex code (eg. FF0000). You can pick hex codes by clicking on the input field. To delete a hex code, backspace it in its field. Don\'t forget to save!', 'yabp'); ?></p>
@@ -373,6 +466,8 @@ function yabp_options() {
             <tr><td><?php _e('Product availability font colour', 'yabp'); ?>:</td><td><input class="color {required:false,pickerClosable:true,pickerCloseText:'<?php _e('Close', 'yabp'); ?>'}" type="text" maxlength="6" size="6" value="<?php echo get_option('yabp_styling_item_availability_fontcolour')?>" name="yabp_styling_item_availability_fontcolour" /></td></tr>
             <tr><td><?php _e('\'Free shipping\' text font size', 'yabp'); ?>:</td><td><input type="text" maxlength="2" size="2" value="<?php echo get_option('yabp_styling_item_freeshipping_fontsize')?>" name="yabp_styling_item_freeshipping_fontsize" /> <sub>(<?php echo $yabp_styling_item_fontsize_lowlimit."-".$yabp_styling_item_fontsize_highlimit; ?>)</sub></td></tr>
             <tr><td><?php _e('\'Free shipping\' text font colour', 'yabp'); ?>:</td><td><input class="color {required:false,pickerClosable:true,pickerCloseText:'<?php _e('Close', 'yabp'); ?>'}" type="text" maxlength="6" size="6" value="<?php echo get_option('yabp_styling_item_freeshipping_fontcolour')?>" name="yabp_styling_item_freeshipping_fontcolour" /></td></tr>
+            <tr><td><?php _e('\'Countdown\' text font size', 'yabp'); ?>:</td><td><input type="text" maxlength="2" size="2" value="<?php echo get_option('yabp_styling_item_countdown_fontsize')?>" name="yabp_styling_item_countdown_fontsize" /> <sub>(<?php echo $yabp_styling_item_fontsize_lowlimit."-".$yabp_styling_item_fontsize_highlimit; ?>)</sub></td></tr>
+            <tr><td><?php _e('\'Countdown\' text font colour', 'yabp'); ?>:</td><td><input class="color {required:false,pickerClosable:true,pickerCloseText:'<?php _e('Close', 'yabp'); ?>'}" type="text" maxlength="6" size="6" value="<?php echo get_option('yabp_styling_item_countdown_fontcolour')?>" name="yabp_styling_item_countdown_fontcolour" /></td></tr>
             <tr><td><?php _e('Product text link font size', 'yabp'); ?>:</td><td><input type="text" maxlength="2" size="2" value="<?php echo get_option('yabp_styling_item_textlink_fontsize')?>" name="yabp_styling_item_textlink_fontsize" /> <sub>(<?php echo $yabp_styling_item_fontsize_lowlimit."-".$yabp_styling_item_fontsize_highlimit; ?>)</sub></td></tr>
             <tr><td><?php _e('Product text link font colour', 'yabp'); ?>:</td><td><input class="color {required:false,pickerClosable:true,pickerCloseText:'<?php _e('Close', 'yabp'); ?>'}" type="text" maxlength="6" size="6" value="<?php echo get_option('yabp_styling_item_textlink_fontcolour')?>" name="yabp_styling_item_textlink_fontcolour" /></td></tr>
         </table>
@@ -428,12 +523,51 @@ function yabp_add_item_new($bolid, $countryid, $check=false, $returnid=false) {
     else { return false; }
 }
 
+function yabp_add_deal_new($keyword, $updateinterval, $check=false, $returnid=false) {
+    if (isset($keyword) && isset($updateinterval) && is_numeric($updateinterval)) {
+        global $wpdb, $table_name_yabp_deals, $yabp_deals_updateinterval_default;
+        $keyword = esc_sql($keyword);
+        if ($keyword == "1") { $entry_updateinterval = 3; }
+        else { $entry_updateinterval = esc_sql($updateinterval); }
+        if ($check) { 
+            if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp_deals."` WHERE entry_keyword = '".esc_sql($keyword)."'")) { return true; }
+            else { return false; }
+        }
+        else { 
+            if ($wpdb->query("SELECT entry_id FROM `".$table_name_yabp_deals."` WHERE entry_keyword = '".esc_sql($keyword)."'")) { return false; }
+            else {
+                if ($returnid) {
+                    $wpdb->insert($table_name_yabp_deals, array('entry_id' => '', 'entry_updateinterval' => $entry_updateinterval, 'entry_keyword' => $keyword, 'entry_showthumb' => 1, 'entry_showprice' => 1, 'entry_showlistprice' => 1, 'entry_showtitle' => 1, 'entry_showdescription' => 1, 'entry_showfreeshipping' => 1, 'entry_showrating' => 1, 'entry_showbutton' => 1, 'entry_buttontype' => 1, 'entry_putincart' => 0, 'entry_recordimpressions' => 1, 'entry_openinnewtab' => 1, 'entry_style' => 1, 'entry_showcountdown' => 1));
+                    return $wpdb->insert_id;
+                }
+                else { return $wpdb->insert($table_name_yabp_deals, array('entry_id' => '', 'entry_updateinterval' => $entry_updateinterval, 'entry_keyword' => $keyword, 'entry_showthumb' => 1, 'entry_showprice' => 1, 'entry_showlistprice' => 1, 'entry_showtitle' => 1, 'entry_showdescription' => 1, 'entry_showfreeshipping' => 1, 'entry_showrating' => 1, 'entry_showbutton' => 1, 'entry_buttontype' => 1, 'entry_putincart' => 0, 'entry_recordimpressions' => 1, 'entry_openinnewtab' => 1, 'entry_style' => 1, 'entry_showcountdown' => 1)); }
+            }
+        }
+    }
+    else { return false; }
+}
+
 function yabp_add_item_replace($entry_id, $bolid, $countryid) {
     if (isset($entry_id) && is_numeric($entry_id) && isset($bolid) && isset($countryid) && is_numeric($countryid)) {
         global $wpdb, $table_name_yabp;
 
         if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") && $wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") != $bolid) { 
             return $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_bolid = '".esc_sql($bolid)."', entry_country = '".esc_sql($countryid)."' WHERE entry_id = '".esc_sql($entry_id)."'"); 
+        }
+        else { return false; }
+    }
+    else { return false; }
+}
+
+function yabp_add_deal_replace($entry_id, $keyword, $updateinterval) {
+    if (isset($entry_id) && is_numeric($entry_id) && isset($keyword) && isset($updateinterval) && is_numeric($updateinterval)) {
+        global $wpdb, $table_name_yabp_deals;
+        $keyword = esc_sql($keyword);
+        if ($keyword == "1") { $entry_updateinterval = 3; }
+        else { $entry_updateinterval = esc_sql($updateinterval); }
+
+        if ($wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp_deals."` WHERE entry_id = '".esc_sql($entry_id)."'") && $wpdb->get_var("SELECT entry_keyword FROM `".$table_name_yabp_deals."` WHERE entry_id = '".esc_sql($entry_id)."'") != $keyword) { 
+            return $wpdb->query("UPDATE `".$table_name_yabp_deals."` SET entry_keyword = '".esc_sql($keyword)."', entry_updateinterval = '".esc_sql($entry_updateinterval)."' WHERE entry_id = '".esc_sql($entry_id)."'");
         }
         else { return false; }
     }
@@ -450,34 +584,12 @@ function yabp_cron_updateinterval_check_number($interval) {
     else { return false; }
 }
 
-function yabp_entry_bolid_via_entry_id($entry_id) {
+function yabp_entry_value_via_entry_id($entry_id, $column, $formatted=false) {
     global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_bolid FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_updateinterval_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_updateinterval FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_updateinterval FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_thumbsize_via_entry_id($entry_id, $backend=false) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) {
-        
-        if ($backend) {
-            if ($wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) {
-                $thumb_size = $wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'");
+    if (isset($entry_id) && is_numeric($entry_id) && isset($column) && ($column == 'entry_bolid' || $column == 'entry_updateinterval' || $column == 'entry_thumb' || $column == 'entry_buttontype' || $column == 'entry_country')) {
+        if ($column == 'entry_thumb' && $formatted) {
+            if ($wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) {
+                $thumb_size = $wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'");
                 switch ($thumb_size) {
                     case 1:
                         return "item_xsthumb";
@@ -492,170 +604,45 @@ function yabp_entry_thumbsize_via_entry_id($entry_id, $backend=false) {
                 }
                 return false;
             }
-            else { return false; }                
+            else { return false; }                            
         }
-        else {
-            if ($wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_thumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
-            else { return false; }                
-        }
-    }
-    else { return false; }
-}
-
-function yabp_entry_buttontype_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) {
-        if ($wpdb->get_var("SELECT entry_buttontype FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_buttontype FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_showthumb_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showthumb FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_showprice_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showprice FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_showlistprice_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showlistprice FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_showtitle_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showtitle FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_showsubtitle_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showsubtitle FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_showavailability_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showavailability FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_showrating_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showrating FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_showbutton_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showbutton FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_putincart_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_putincart FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_recordimpressions_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_recordimpressions FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_openinnewtab_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_openinnewtab FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_imgontop_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_imgontop FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
-    }
-    else { return false; }
-}
-
-function yabp_entry_country_via_entry_id($entry_id, $formatted=false) {
-    global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($formatted) {
+        elseif ($column == 'entry_country' && $formatted) {
             if ($wpdb->get_var("SELECT entry_country FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) {                 
                 return ($wpdb->get_var("SELECT entry_country FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")==2?"be":"nl");
-            }
-            else { return false; }                
+            }            
+            else { return false; }
         }
-        else {        
-            if ($wpdb->get_var("SELECT entry_country FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT entry_country FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
-            else { return false; }                
+        else { 
+            if ($wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
+            else { return false; }                            
         }
     }
     else { return false; }
 }
 
-function yabp_entry_showfreeshipping_via_entry_id($entry_id) {
+function yabp_entry_boolean_via_entry_id($entry_id, $column) {
     global $wpdb, $table_name_yabp;
-    
-    if (isset($entry_id) && is_numeric($entry_id)) { 
-        if ($wpdb->get_var("SELECT entry_showfreeshipping FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                
+    if (isset($entry_id) && is_numeric($entry_id) && isset($column) && ($column == 'entry_showthumb' || $column == 'entry_showprice' || $column == 'entry_showlistprice' || $column == 'entry_showtitle' ||  $column == 'entry_showsubtitle' || $column == 'entry_showavailability' || $column == 'entry_showrating' || $column == 'entry_showbutton' || $column == 'entry_putincart' || $column == 'entry_recordimpressions' || $column == 'entry_openinnewtab' || $column == 'entry_imgontop' || $column == 'entry_showfreeshipping')) {
+        if ($wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
+        else { return false; }                            
+    }
+    else { return false; }
+}
+
+function yabp_deals_entry_value_via_entry_id($entry_id, $column) {
+    global $wpdb, $table_name_yabp_deals;
+    if (isset($entry_id) && is_numeric($entry_id) && isset($column) && ($column == 'entry_keyword' || $column == 'entry_updateinterval' || $column == 'entry_buttontype')) {
+        if ($wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp_deals."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp_deals."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
+        else { return false; }                            
+    }
+    else { return false; }
+}
+
+function yabp_deals_entry_boolean_via_entry_id($entry_id, $column) {
+    global $wpdb, $table_name_yabp_deals;
+    if (isset($entry_id) && is_numeric($entry_id) && isset($column) && ($column == 'entry_showthumb' || $column == 'entry_showtitle' || $column == 'entry_showprice' || $column == 'entry_showlistprice' || $column == 'entry_showrating' || $column == 'entry_showbutton' || $column == 'entry_putincart' || $column == 'entry_recordimpressions' || $column == 'entry_openinnewtab' || $column == 'entry_imgontop' || $column == 'entry_showfreeshipping' || $column == 'entry_showcountdown')) {
+        if ($wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp_deals."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
+        else { return false; }                            
     }
     else { return false; }
 }
@@ -680,6 +667,16 @@ function yabp_item_value_via_column_name($entry_id, $column_name) {
     else { return false; }
 }
 
+function yabp_deals_item_value_via_column_name($entry_id, $column_name) {
+    global $wpdb, $table_name_yabp_deals_items;
+    
+    if (isset($entry_id) && is_numeric($entry_id) && isset($column_name) && ($column_name == 'item_title' || $column_name == 'item_description' || $column_name == 'item_externalurl' || $column_name == 'item_afflink' || $column_name == 'item_thumb' || $column_name == 'item_offerid' || $column_name == 'item_bolid' || $column_name == 'item_startdate' || $column_name == 'item_enddate' || $column_name == 'item_price' || $column_name == 'item_listprice' || $column_name == 'item_rating' || $column_name == 'item_ratingspan' || $column_name == 'time')) {
+        if ($wpdb->get_var("SELECT ".esc_sql($column_name)." FROM `".$table_name_yabp_deals_items."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT ".esc_sql($column_name)." FROM `".$table_name_yabp_deals_items."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
+        else { return false; }                
+    }
+    else { return false; }
+}
+
 function yabp_item_update_via_entry_id($entry_id) {
     global $wpdb, $table_name_yabp_items, $yabp_partnerlink_prefix, $yabp_add_item_item_defaultcountry;
     
@@ -687,8 +684,8 @@ function yabp_item_update_via_entry_id($entry_id) {
 
         if ((!get_option('yabp_apikey') || !get_option('yabp_siteid')) || !get_option('yabp_apikey_valid') || get_option('yabp_siteid') == "") { return false; }
 
-        $bolid = yabp_entry_bolid_via_entry_id($entry_id);        
-        $countryid = ((int) yabp_entry_country_via_entry_id($entry_id)>0?(int) $_POST['yabp_add_item_country']:$yabp_add_item_item_defaultcountry);        
+        $bolid = yabp_entry_value_via_entry_id($entry_id, 'entry_bolid');        
+        $countryid = ((int) yabp_entry_value_via_entry_id($entry_id, 'entry_country')>0?(int) $_POST['yabp_add_item_country']:$yabp_add_item_item_defaultcountry);        
         $country = ($countryid==2?"be":"nl");            
         $output = yabp_api_dorequest('GET', '/catalog/v4/products/'.$bolid, '?apikey=' . get_option('yabp_apikey') . '&format=xml&includeattributes=true&country='.$country, '', null);
 
@@ -773,6 +770,19 @@ function yabp_page_exists_itemlist($pagenumber) {
     else { return false; }
 }
 
+function yabp_page_exists_dealslist($pagenumber) {
+    global $wpdb, $table_name_yabp_deals, $yabp_dealslist_count;
+    
+    if (!get_option('yabp_dealslist_count')) { $perpage = $yabp_dealslist_count; }
+    else { $perpage = get_option('yabp_dealslist_count'); }
+        
+    $total = $wpdb->get_row("SELECT COUNT(entry_id) FROM `".$table_name_yabp_deals."`",ARRAY_N);
+    $pages = ceil($total[0] / (float) $perpage);    
+    
+    if ($pages >= $pagenumber) { return true; }
+    else { return false; }
+}
+
 function yabp_format_price($price) {
     if (isset($price) && is_numeric($price)) {
         
@@ -789,11 +799,12 @@ function yabp_format_price($price) {
     else { return false; }
 }
 
-function yabp_format_shortcode($entry_id) {
-    global $yabp_item_shortcode_format;
+function yabp_format_shortcode($entry_id, $type=null) {
+    global $yabp_item_shortcode_format, $yabp_deals_shortcode_format;
     
     if (isset($entry_id) && is_numeric($entry_id)) {
-        return str_replace("%entry_id%", $entry_id, $yabp_item_shortcode_format);
+        if (isset($type) && $type == "deals") { return str_replace("%entry_id%", $entry_id, $yabp_deals_shortcode_format); }
+        else { return str_replace("%entry_id%", $entry_id, $yabp_item_shortcode_format); }
     }
     else { return false; }
 }
@@ -851,6 +862,54 @@ function yabp_format_updateinterval($updateinterval, $reverse=false, $backend=fa
                     return __('twice a day', 'yabp');
                 case 3:
                     return __('daily', 'yabp');
+            }
+            return false;
+        }
+    }
+    else { return false; }    
+}
+
+function yabp_deals_format_updateinterval($updateinterval, $reverse=false, $backend=false, $cronfunction=false) {
+    if (isset($updateinterval)) {
+        if ($cronfunction) {
+            //useful with one cron? no?!
+            switch ($updateinterval) {
+                case 1:
+                    return "yabp_deals_cron_event_daily";
+            }
+            return false;
+        }
+        elseif ($backend) {
+            switch ($updateinterval) {
+                case 1:
+                    return "weekly";
+                case 2:
+                    return "daily";
+                case 3:
+                    return "daily deal";
+            }
+            return false;
+        }
+        elseif ($reverse) {
+            $updateinterval = trim($updateinterval);
+            switch ($updateinterval) {
+                case __('weekly', 'yabp'):
+                    return 1;
+                case __('daily', 'yabp'):
+                    return 2;
+                case __('daily deal', 'yabp'):
+                    return 3;
+            }
+            return false;
+        }
+        else {        
+            switch ($updateinterval) {
+                case 1:
+                    return __('weekly', 'yabp');
+                case 2:
+                    return __('daily', 'yabp');
+                case 2:
+                    return __('daily deal', 'yabp');
             }
             return false;
         }
@@ -928,6 +987,185 @@ function yabp_format_buttontype($buttontype, $reverse=false) {
     else { return false; }    
 }
 
+function yabp_deals_title_via_entry_id($entry_id, $checkempty=false) {
+    global $wpdb, $table_name_yabp_deals_items;
+    
+    if (isset($entry_id) && is_numeric($entry_id)) {
+        if ($checkempty) { 
+            if ($wpdb->get_var("SELECT item_title FROM `".$table_name_yabp_deals_items."` WHERE entry_id = '".esc_sql($entry_id)."'") == "-1") { return -1; }
+            else { return false; }                            
+        }
+        else {     
+            if ($wpdb->get_var("SELECT item_title FROM `".$table_name_yabp_deals_items."` WHERE entry_id = '".esc_sql($entry_id)."'")) { return $wpdb->get_var("SELECT item_title FROM `".$table_name_yabp_deals_items."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
+            else { return false; }                
+        }
+    }
+    else { return false; }
+}
+
+function yabp_deals_update($entry_id=null) {
+    global $wpdb, $table_name_yabp_deals, $yabp_partnerlink_prefix, $table_name_yabp_deals_items, $yabp_deals_update_startofweek, $yabp_bolcom_deals_feed_link;    
+    $deals = file_get_contents($yabp_bolcom_deals_feed_link);    
+    $keywords = array();
+    $keywords_ids = array();        
+    if (isset($entry_id)) {
+        array_push($keywords, yabp_deals_entry_value_via_entry_id($entry_id, 'entry_keyword'));
+        array_push($keywords_ids, $entry_id);                
+    }
+    else {
+        if (date('w') == $yabp_deals_update_startofweek) { $deals_entries = $wpdb->get_results("SELECT entry_id, entry_keyword FROM `".$table_name_yabp_deals."` ORDER BY entry_id"); }
+        else { 
+            $deals_entries = $wpdb->get_results("SELECT entry_id, entry_keyword FROM `".$table_name_yabp_deals."` WHERE entry_updateinterval IN (2,3) ORDER BY entry_id");             
+            $deals_entries_checkexpired = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp_deals."` WHERE entry_updateinterval = 1 ORDER BY entry_id");
+            $time = time();
+            foreach ($deals_entries_checkexpired as $deal_entry_checkexpired) {
+                if (yabp_deals_countdown_format(yabp_deals_item_value_via_column_name($deal_entry_checkexpired->entry_id, 'item_enddate'), time(), true) && yabp_deals_title_via_entry_id($deal_entry_checkexpired->entry_id, true) != -1) { $wpdb->query("UPDATE `".$table_name_yabp_deals_items."` SET item_offerid = '', item_bolid = '', item_title = '-1', item_description = '', item_startdate = '', item_enddate = '', item_externalurl = '', item_afflink = '', item_thumb = '', item_price = '', item_listprice = '', item_rating = '', item_ratingspan = '', time = '".esc_sql($time)."' WHERE entry_id = '".esc_sql($deal_entry_checkexpired->entry_id)."'"); }
+            }
+        }        
+        foreach ($deals_entries as $deal_entry) { array_push($keywords, $deal_entry->entry_keyword); array_push($keywords_ids, $deal_entry->entry_id); }        
+    }
+    $phpobject = simplexml_load_string($deals);
+    $iii = 0;
+    foreach($keywords as $kw_arrays) {
+        $todo_array[$keywords[$iii]] = array();
+        $iii++;
+    }                                    
+    $i = 0;
+    foreach ($phpobject->offer as $item) {
+        $ii = 0;
+        foreach($keywords as $kw) {
+            if (strpos(strtolower($item->offerId), strtolower($keywords[$ii])) !== false) { array_push($todo_array[$keywords[$ii]], $i); }
+            $ii++;
+        }
+        $i++;
+    }
+    $iv = 0;
+    foreach($keywords as $kw_pr_arrays) {        
+        $dcount = (count($todo_array[$keywords[$iv]])-1);        
+        if (($dcount+1) < 1) {
+            $entry_id = $keywords_ids[$iv];
+            $time = time();
+            if (yabp_deals_title_via_entry_id($entry_id)) {            
+                $wpdb->query("UPDATE `".$table_name_yabp_deals_items."` SET item_offerid = '', item_bolid = '', item_title = '-1', item_description = '', item_startdate = '', item_enddate = '', item_externalurl = '', item_afflink = '', item_thumb = '', item_price = '', item_listprice = '', item_rating = '', item_ratingspan = '', time = '".esc_sql($time)."' WHERE entry_id = '".esc_sql($entry_id)."'");
+            }
+            else {
+                $wpdb->query("INSERT INTO `".$table_name_yabp_deals_items."` (item_id, item_title, time) VALUES ('', '-1', '".esc_sql($time)."')");
+            }               
+        }
+        else {         
+            if ($keywords[$iv] == "1") { $darrayid = 0; }
+            else {
+                $darrayrand = rand(0,$dcount);
+                $darrayid = $todo_array[$keywords[$iv]][$darrayrand];
+            }    
+            //$item_id = '';
+            $entry_id = $keywords_ids[$iv];
+            $item_offerid = trim($phpobject->offer[$darrayid]->offerId);
+            $item_bolid = trim($phpobject->offer[$darrayid]->globalProductId);
+            $item_title = trim($phpobject->offer[$darrayid]->productTitle);
+            $item_description = trim($phpobject->offer[$darrayid]->productDescription);
+            $item_startdate = strtotime($phpobject->offer[$darrayid]->offerStartDate);
+            $item_enddate = strtotime($phpobject->offer[$darrayid]->offerEndDate);
+            $item_externalurl = trim($phpobject->offer[$darrayid]->url);
+            $item_afflink = $yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=TXL&amp;url=".urlencode($item_externalurl)."&amp;name=".urlencode(strtolower($item_title));
+            $item_thumb = trim($phpobject->offer[$darrayid]->imageUrl);
+            $item_price = trim($phpobject->offer[$darrayid]->offerPrice);
+            $item_listprice = trim($phpobject->offer[$darrayid]->priceOld);
+            $item_rating = trim($phpobject->offer[$darrayid]->rating);
+            //$item_ratingspan
+            $time = time();
+
+            if (@GetImageSize($item_sthumb)) { } 
+            else { $item_sthumb = "http://www.bol.com/nl/static/images/main/noimage_124x100default.gif"; }
+
+            if ($item_rating != "") {
+                $nicerating = substr($item_rating, 0, 1);
+                $countrating = strlen($item_rating);
+                if ($countrating < 2) { $nicerating .= "_0"; }
+                else { $nicerating .= '_' . substr($item_rating, -1); }
+                $altrating = str_replace("_", ".", $nicerating);
+                $item_ratingspan = '<span class="rating"><img alt="'.sprintf(__('Score %1$.1f out of 5 stars.', 'yabp'), $altrating).'" title="'.sprintf(__('Score %1$.1f out of 5 stars.', 'yabp'), $altrating).'" src="http://review.bol.com/7628-nl_nl/' . $nicerating . '/5/rating.gif"></span>';
+            } 
+            else { $item_ratingspan = ''; }
+            if (yabp_deals_title_via_entry_id($entry_id)) { $wpdb->query("UPDATE `".$table_name_yabp_deals_items."` SET item_offerid = '".esc_sql($item_offerid)."', item_bolid = '".esc_sql($item_bolid)."', item_title = '".esc_sql($item_title)."', item_description = '".esc_sql($item_description)."', item_startdate = '".esc_sql($item_startdate)."', item_enddate = '".esc_sql($item_enddate)."', item_externalurl = '".esc_sql($item_externalurl)."', item_afflink = '".esc_sql($item_afflink)."', item_thumb = '".esc_sql($item_thumb)."', item_price = '".esc_sql($item_price)."', item_listprice = '".esc_sql($item_listprice)."', item_rating = '".esc_sql($item_rating)."', item_ratingspan = '".esc_sql($item_ratingspan)."', time = '".esc_sql($time)."' WHERE entry_id = '".esc_sql($entry_id)."'"); }
+            else { $wpdb->query("INSERT INTO `".$table_name_yabp_deals_items."` (item_id, entry_id, item_offerid, item_bolid, item_title, item_description, item_startdate, item_enddate, item_externalurl, item_afflink, item_thumb, item_price, item_listprice, item_rating, item_ratingspan, time) VALUES ('', '".esc_sql($entry_id)."', '".esc_sql($item_offerid)."', '".esc_sql($item_bolid)."', '".esc_sql($item_title)."', '".esc_sql($item_description)."', '".esc_sql($item_startdate)."', '".esc_sql($item_enddate)."', '".esc_sql($item_externalurl)."', '".esc_sql($item_afflink)."', '".esc_sql($item_thumb)."', '".esc_sql($item_price)."', '".esc_sql($item_listprice)."', '".esc_sql($item_rating)."', '".esc_sql($item_ratingspan)."', '".esc_sql($time)."')"); }   
+        }     
+        $iv++;
+    }    
+}
+
+function yabp_deals_get_category_nicename_via_keyword($keyword, $updateinterval) {
+    global $yabp_deals_keywords, $yabp_deals_keywords_strings, $yabp_deals_daydeals_keywords, $yabp_deals_daydeals_keywords_strings;
+    
+    if (isset($keyword) && isset($updateinterval) && is_numeric($updateinterval)) {
+        if ($updateinterval == 3) { return __($yabp_deals_daydeals_keywords_strings[array_search($keyword, $yabp_deals_daydeals_keywords)], 'yabp'); }
+        else { return __($yabp_deals_keywords_strings[array_search($keyword, $yabp_deals_keywords)], 'yabp'); }
+    }
+    else { return false; }    
+}
+
+function yabp_deals_countdown_format($countdowntime, $currenttime, $checkexpired=false) {
+    if (isset($countdowntime) && isset($currenttime)) {
+        $output = "";
+        $timestamp = $countdowntime - $currenttime;    
+        if ($checkexpired && $timestamp < 1) { return true; }
+        elseif ($checkexpired && $timestamp > 0) { return false; }
+        elseif ($timestamp <= 60) { return __('about one minute', 'yabp'); }
+        else {    
+            $days=floor($timestamp/(60*60*24));$timestamp%=60*60*24;
+            $hrs=floor($timestamp/(60*60));$timestamp%=60*60;
+            $mins=floor($timestamp/60);   
+            if ($days == 1 && $hrs < 1 && $mins < 1) { $output.=$days.' '.__('day', 'yabp'); }
+            elseif ($days > 1 && $hrs < 1 && $mins < 1) { $output.=$days.' '.__('days', 'yabp'); }            
+            elseif ($days == 1 && $hrs < 1 && $mins == 1) { $output.=$days.' '.__('day', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minute', 'yabp'); }
+            elseif ($days == 1 && $hrs < 1 && $mins > 1) { $output.=$days.' '.__('day', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days == 1 && $hrs > 1 && $mins == 1) { $output.=$days.' '.__('day', 'yabp').', '.$hrs.' '.__('hours', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minute', 'yabp'); }
+            elseif ($days == 1 && $hrs > 1 && $mins > 1) { $output.=$days.' '.__('day', 'yabp').', '.$hrs.' '.__('hours', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days == 1 && $hrs == 1 && $mins == 1) { $output.=$days.' '.__('day', 'yabp').', '.$hrs.' '.__('hour', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minute', 'yabp'); }
+            elseif ($days == 1 && $hrs == 1 && $mins > 1) { $output.=$days.' '.__('day', 'yabp').', '.$hrs.' '.__('hour', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days == 1 && $hrs == 1 && $mins < 1) { $output.=$days.' '.__('day', 'yabp').' '.__('and', 'yabp').' '.$hrs.' '.__('hour', 'yabp'); }
+            elseif ($days == 1 && $hrs > 1 && $mins < 1) { $output.=$days.' '.__('day', 'yabp').' '.__('and', 'yabp').' '.$hrs.' '.__('hours', 'yabp'); }            
+            elseif ($days > 1 && $hrs > 1 && $mins == 1) { $output.=$days.' '.__('days', 'yabp').', '.$hrs.' '.__('hours', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minute', 'yabp'); }
+            elseif ($days > 1 && $hrs > 1 && $mins > 1) { $output.=$days.' '.__('days', 'yabp').', '.$hrs.' '.__('hours', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days > 1 && $hrs == 1 && $mins == 1) { $output.=$days.' '.__('days', 'yabp').', '.$hrs.' '.__('hour', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minute', 'yabp'); }
+            elseif ($days > 1 && $hrs == 1 && $mins > 1) { $output.=$days.' '.__('days', 'yabp').', '.$hrs.' '.__('hour', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days > 1 && $hrs < 1 && $mins == 1) { $output.=$days.' '.__('days', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minute', 'yabp'); }
+            elseif ($days > 1 && $hrs < 1 && $mins > 1) { $output.=$days.' '.__('days', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days > 1 && $hrs == 1 && $mins < 1) { $output.=$days.' '.__('days', 'yabp').' '.__('and', 'yabp').' '.$hrs.' '.__('hour', 'yabp'); }
+            elseif ($days > 1 && $hrs > 1 && $mins < 1) { $output.=$days.' '.__('days', 'yabp').' '.__('and', 'yabp').' '.$hrs.' '.__('hours', 'yabp'); }            
+            elseif ($days < 1 && $hrs > 1 && $mins == 1) { $output.=$hrs.' '.__('hours', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minute', 'yabp'); }
+            elseif ($days < 1 && $hrs > 1 && $mins > 1) { $output.=$hrs.' '.__('hours', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days < 1 && $hrs == 1 && $mins == 1) { $output.=$hrs.' '.__('hour', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minute', 'yabp'); }
+            elseif ($days < 1 && $hrs == 1 && $mins > 1) { $output.=$hrs.' '.__('hour', 'yabp').' '.__('and', 'yabp').' '.$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days < 1 && $hrs < 1 && $mins == 1) { $output.=$mins.' '.__('minute', 'yabp'); }
+            elseif ($days < 1 && $hrs < 1 && $mins > 1) { $output.=$mins.' '.__('minutes', 'yabp'); }
+            elseif ($days < 1 && $hrs == 1 && $mins < 1) { $output.=$hrs.' '.__('hour', 'yabp'); }
+            elseif ($days < 1 && $hrs > 1 && $mins < 1) { $output.=$hrs.' '.__('hours', 'yabp'); }                                                                                  
+            return $output;
+        }        
+    }
+    else { return false; }
+}
+
+function yabp_deals_id_format($input) {
+    if (isset($input)) { 
+        $output = strtolower($input);
+        $output = str_replace("weekdeal_", "", $output);
+        $output = str_replace("dagdeal_", "", $output);
+        $output = str_replace("weekaanbieding_", "", $output);
+        $output = str_replace("weekdeal-", "", $output);
+        $output = str_replace("weekaanbieding-", "", $output);
+        $output = str_replace("wine_", "", $output);
+        
+        if (strpos($output, "-")) { $output_explode = explode("-", $output); }
+        else { $output_explode = explode("_", $output); }
+        
+        if (is_numeric($output_explode[0])) { return $output_explode[1]; } 
+        else { return $output_explode[0]; }
+    }
+    else { return false; }
+}
+
 function yabp_add_item() {
     global $wpdb, $yabp_add_item_item_count, $yabp_add_item_item_defaultcountry;
     
@@ -946,7 +1184,7 @@ function yabp_add_item() {
         elseif (isset($_POST['yabp_add_items_submit']) && empty($_POST['yabp_add_items_array'])) { unset($_POST); }
         elseif (isset($_POST['yabp_add_items_submit']) && !empty($_POST['yabp_add_items_array'])) {
             
-            if (isset($_POST['yabp_replace_item_entry_id']) && is_numeric($_POST['yabp_replace_item_entry_id']) && yabp_entry_bolid_via_entry_id($_POST['yabp_replace_item_entry_id']) && isset($_POST['yabp_replace_item_entry_id_p']) && is_numeric($_POST['yabp_replace_item_entry_id_p'])) {
+            if (isset($_POST['yabp_replace_item_entry_id']) && is_numeric($_POST['yabp_replace_item_entry_id']) && yabp_entry_value_via_entry_id($_POST['yabp_replace_item_entry_id'], 'entry_bolid') && isset($_POST['yabp_replace_item_entry_id_p']) && is_numeric($_POST['yabp_replace_item_entry_id_p'])) {
                 $yabp_replace_item_entry_id = $_POST['yabp_replace_item_entry_id'];
                 $yabp_replace_item_entry_id_p = $_POST['yabp_replace_item_entry_id_p'];
                 
@@ -1029,7 +1267,7 @@ function yabp_add_item() {
             if ($error) { ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p><?php echo $summary; ?></p></div><?php }
             else { ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#B9FF9C; border:1px solid #ccc;"><p><?php echo $summary; ?></p></div><?php }
 
-            if (((isset($_GET['action']) && $_GET['action'] == "replace_item" && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_bolid_via_entry_id($_GET['entry_id']) && isset($_GET['p']) && is_numeric($_GET['p'])) || (isset($_POST['yabp_replace_item_entry_id']) && is_numeric($_POST['yabp_replace_item_entry_id']) && yabp_entry_bolid_via_entry_id($_POST['yabp_replace_item_entry_id']) && isset($_POST['yabp_replace_item_entry_id_p']) && is_numeric($_POST['yabp_replace_item_entry_id_p']))) && !$error) { if (isset($_POST['yabp_replace_item_entry_id'])) { $replace_entry_id = $_POST['yabp_replace_item_entry_id']; $replace_entry_id_p = $_POST['yabp_replace_item_entry_id_p']; } else { $replace_entry_id = $_GET['entry_id']; $replace_entry_id_p = $_GET['p']; } ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#B5EBFF; border:1px solid #ccc;"><p><?php printf(__('Item \'%1$s\' will be replaced by the product you select from the bol.com Catalog. <a href="%2$s">Click here</a> to cancel this, and to go back to the item\'s settings.', 'yabp'), yabp_item_title_via_entry_id($replace_entry_id), $_SERVER['PHP_SELF'].'?page=yabp-itemlist&p='.$replace_entry_id_p.'#yabp-'.$replace_entry_id); ?></p></div><?php
+            if (((isset($_GET['action']) && $_GET['action'] == "replace_item" && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_value_via_entry_id($_GET['entry_id'], 'entry_bolid') && isset($_GET['p']) && is_numeric($_GET['p'])) || (isset($_POST['yabp_replace_item_entry_id']) && is_numeric($_POST['yabp_replace_item_entry_id']) && yabp_entry_value_via_entry_id($_POST['yabp_replace_item_entry_id'], 'entry_bolid') && isset($_POST['yabp_replace_item_entry_id_p']) && is_numeric($_POST['yabp_replace_item_entry_id_p']))) && !$error) { if (isset($_POST['yabp_replace_item_entry_id'])) { $replace_entry_id = $_POST['yabp_replace_item_entry_id']; $replace_entry_id_p = $_POST['yabp_replace_item_entry_id_p']; } else { $replace_entry_id = $_GET['entry_id']; $replace_entry_id_p = $_GET['p']; } ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#B5EBFF; border:1px solid #ccc;"><p><?php printf(__('Item \'%1$s\' will be replaced by the product you select from the bol.com Catalog. <a href="%2$s">Click here</a> to cancel this, and to go back to the item\'s settings.', 'yabp'), yabp_item_title_via_entry_id($replace_entry_id), $_SERVER['PHP_SELF'].'?page=yabp-itemlist&p='.$replace_entry_id_p.'#yabp-'.$replace_entry_id); ?></p></div><?php
                 $resultlist = str_replace("type=\"checkbox\"", "type=\"radio\"", $resultlist);
             }
         
@@ -1057,14 +1295,14 @@ function yabp_add_item() {
         if ((!isset($_POST['yabp_add_item_searchterm_submit']) && !isset($_POST['yabp_add_items_submit'])) || (isset($_POST['yabp_add_item_searchterm_submit']) && empty($_POST['yabp_add_item_searchterm'])) || $retry) {        
         ?>
         <?php if (isset($_POST['yabp_add_item_searchterm_submit']) && empty($_POST['yabp_add_item_searchterm'])) { ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p><?php _e('Enter a search term to continue.', 'yabp'); ?></p></div><?php } ?>
-        <?php if ((isset($_GET['action']) && $_GET['action'] == "replace_item" && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_bolid_via_entry_id($_GET['entry_id']) && isset($_GET['p']) && is_numeric($_GET['p'])) || (isset($_POST['yabp_replace_item_entry_id']) && is_numeric($_POST['yabp_replace_item_entry_id']) && yabp_entry_bolid_via_entry_id($_POST['yabp_replace_item_entry_id']) && isset($_POST['yabp_replace_item_entry_id_p']) && is_numeric($_POST['yabp_replace_item_entry_id_p']))) { if (isset($_POST['yabp_replace_item_entry_id'])) { $replace_entry_id = $_POST['yabp_replace_item_entry_id']; $replace_entry_id_p = $_POST['yabp_replace_item_entry_id_p']; } else { $replace_entry_id = $_GET['entry_id']; $replace_entry_id_p = $_GET['p']; } ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#B5EBFF; border:1px solid #ccc;"><p><?php printf(__('Item \'%1$s\' will be replaced by the product you select from the bol.com Catalog. <a href="%2$s">Click here</a> to cancel this, and to go back to the item\'s settings.', 'yabp'), yabp_item_title_via_entry_id($replace_entry_id), $_SERVER['PHP_SELF'].'?page=yabp-itemlist&p='.$replace_entry_id_p.'#yabp-'.$replace_entry_id); ?></p></div><?php } ?>
+        <?php if ((isset($_GET['action']) && $_GET['action'] == "replace_item" && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_value_via_entry_id($_GET['entry_id'], 'entry_bolid') && isset($_GET['p']) && is_numeric($_GET['p'])) || (isset($_POST['yabp_replace_item_entry_id']) && is_numeric($_POST['yabp_replace_item_entry_id']) && yabp_entry_value_via_entry_id($_POST['yabp_replace_item_entry_id'], 'entry_bolid') && isset($_POST['yabp_replace_item_entry_id_p']) && is_numeric($_POST['yabp_replace_item_entry_id_p']))) { if (isset($_POST['yabp_replace_item_entry_id'])) { $replace_entry_id = $_POST['yabp_replace_item_entry_id']; $replace_entry_id_p = $_POST['yabp_replace_item_entry_id_p']; } else { $replace_entry_id = $_GET['entry_id']; $replace_entry_id_p = $_GET['p']; } ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#B5EBFF; border:1px solid #ccc;"><p><?php printf(__('Item \'%1$s\' will be replaced by the product you select from the bol.com Catalog. <a href="%2$s">Click here</a> to cancel this, and to go back to the item\'s settings.', 'yabp'), yabp_item_title_via_entry_id($replace_entry_id), $_SERVER['PHP_SELF'].'?page=yabp-itemlist&p='.$replace_entry_id_p.'#yabp-'.$replace_entry_id); ?></p></div><?php } ?>
         <form method="post">        
             <p><input type="radio" id="yabp_add_item_country_nl" name="yabp_add_item_country" value="1" <?php if ((!isset($_POST['yabp_add_item_searchterm_submit']) && get_option('yabp_add_item_item_defaultcountry') == 1) || (isset($_POST['yabp_add_item_searchterm_submit']) && $_POST['yabp_add_item_country'] == 1) || (isset($_POST['yabp_add_items_reset']) && isset($_POST['yabp_add_items_previouscountry']) && is_numeric($_POST['yabp_add_items_previouscountry']) && $_POST['yabp_add_items_previouscountry'] == 1)) { ?>checked <?php } ?>title="<?php _e('Search for products in the Dutch catalog', 'yabp'); ?>" /> <label for="yabp_add_item_country_nl" title="<?php _e('Search for products in the Dutch catalog', 'yabp'); ?>"><img src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>img/nl.png" alt="<?php _e('Dutch catalog', 'yabp'); ?>" /> <?php _e('Dutch catalog', 'yabp'); ?></label><br />
             <input type="radio" id="yabp_add_item_country_be" name="yabp_add_item_country" value="2" <?php if ((!isset($_POST['yabp_add_item_searchterm_submit']) && get_option('yabp_add_item_item_defaultcountry') == 2) || (isset($_POST['yabp_add_item_searchterm_submit']) && $_POST['yabp_add_item_country'] == 2) || (isset($_POST['yabp_add_items_reset']) && isset($_POST['yabp_add_items_previouscountry']) && is_numeric($_POST['yabp_add_items_previouscountry']) && $_POST['yabp_add_items_previouscountry'] == 2)) { ?>checked <?php } ?>title="<?php _e('Search for products in the Belgium catalog', 'yabp'); ?>" /> <label for="yabp_add_item_country_be" title="<?php _e('Search for products in the Belgium catalog', 'yabp'); ?>"><img src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>img/be.png" alt="<?php _e('Belgium catalog', 'yabp'); ?>" /> <?php _e('Belgium catalog', 'yabp'); ?></label></p>
             <p><?php _e('Search terms', 'yabp'); ?>: <input type="text" size="80" name="yabp_add_item_searchterm"<?php if (isset($_POST['yabp_add_items_reset']) && isset($_POST['yabp_add_items_previoussearchterm'])) { ?> value="<?php echo stripslashes($_POST['yabp_add_items_previoussearchterm']); ?>"<?php } ?> /></p>
             <p class="submit">
                 <input class="button-primary" name="yabp_add_item_searchterm_submit" type="submit" value="<?php _e('Search', 'yabp'); ?>" />
-                <?php if ((isset($_GET['action']) && $_GET['action'] == "replace_item" && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_bolid_via_entry_id($_GET['entry_id']) && isset($_GET['p']) && is_numeric($_GET['p'])) || (isset($_POST['yabp_replace_item_entry_id']) && is_numeric($_POST['yabp_replace_item_entry_id']) && yabp_entry_bolid_via_entry_id($_POST['yabp_replace_item_entry_id']) && isset($_POST['yabp_replace_item_entry_id_p']) && is_numeric($_POST['yabp_replace_item_entry_id_p']))) { ?><input type="hidden" name="yabp_replace_item_entry_id" id="yabp_replace_item_entry_id" value="<?php echo $replace_entry_id; ?>" /><input type="hidden" name="yabp_replace_item_entry_id_p" id="yabp_replace_item_entry_id_p" value="<?php echo $replace_entry_id_p; ?>" /><?php } ?>
+                <?php if ((isset($_GET['action']) && $_GET['action'] == "replace_item" && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_value_via_entry_id($_GET['entry_id'], 'entry_bolid') && isset($_GET['p']) && is_numeric($_GET['p'])) || (isset($_POST['yabp_replace_item_entry_id']) && is_numeric($_POST['yabp_replace_item_entry_id']) && yabp_entry_value_via_entry_id($_POST['yabp_replace_item_entry_id'], 'entry_bolid') && isset($_POST['yabp_replace_item_entry_id_p']) && is_numeric($_POST['yabp_replace_item_entry_id_p']))) { ?><input type="hidden" name="yabp_replace_item_entry_id" id="yabp_replace_item_entry_id" value="<?php echo $replace_entry_id; ?>" /><input type="hidden" name="yabp_replace_item_entry_id_p" id="yabp_replace_item_entry_id_p" value="<?php echo $replace_entry_id_p; ?>" /><?php } ?>
             </p>
         </form>
         <?php
@@ -1103,7 +1341,6 @@ function yabp_itemlist() {
     $items_entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` LIMIT ".$limit);
     
     ?>
-    <script type="text/javascript" src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>js/jquery.zclip.min.js"></script>
     <script type="text/javascript" src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>js/jquery.inplace.js"></script>
     <script type="text/javascript">
         function sure() {
@@ -1163,28 +1400,28 @@ function yabp_itemlist() {
                 else { 
                     ?><td><a name="yabp-<?php echo $item->entry_id; ?>"></a><strong><?php echo ((($_page-1) * $perpage) + $i); ?></strong><br /><br /><input value="<?php echo yabp_format_shortcode($item->entry_id); ?>" size="<?php echo strlen(yabp_format_shortcode($item->entry_id)); ?>" onClick="this.setSelectionRange(0, this.value.length)" /></td>
                     <td><a href="<?php echo $item->item_externalurl; ?>"><img alt="<?php echo $item->item_title; ?>" title="<?php echo $item->item_title; ?>" src="<?php echo $item->item_mthumb; ?>" /></a></td>
-                    <td><a href="<?php echo $item->item_externalurl; ?>"><?php echo $item->item_title; ?></a><br /><br /><?php echo yabp_format_time($item->time); ?><br /><br />                    <?php $countryid = yabp_entry_country_via_entry_id($item->entry_id); $country = yabp_entry_country_via_entry_id($item->entry_id, true); if ($countryid == 2) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_country&amp;value=1&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to retrieve this product\'s data from the Dutch catalog', 'yabp'); ?>"><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_country&amp;value=2&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to retrieve this product\'s data from the Belgium catalog', 'yabp'); ?>"><?php } ?><img src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>img/<?php echo $country; ?>.png" alt="<?php __(($countryid==2?"Belgium":"Dutch")." catalog", 'yabp'); ?>" /></a></td>
+                    <td><a href="<?php echo $item->item_externalurl; ?>"><?php echo $item->item_title; ?></a><br /><br /><?php echo yabp_format_time($item->time); ?><br /><br /><?php $countryid = yabp_entry_value_via_entry_id($item->entry_id, 'entry_country'); $country = yabp_entry_value_via_entry_id($item->entry_id, 'entry_country', true); if ($countryid == 2) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_country&amp;value=1&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to retrieve this product\'s data from the Dutch catalog', 'yabp'); ?>"><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_country&amp;value=2&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to retrieve this product\'s data from the Belgium catalog', 'yabp'); ?>"><?php } ?><img src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>img/<?php echo $country; ?>.png" alt="<?php __(($countryid==2?"Belgium":"Dutch")." catalog", 'yabp'); ?>" /></a></td>
                     <td><?php echo ($item->item_listprice>0?"<span style=\"text-decoration: line-through;\">".yabp_format_price($item->item_listprice)."</span> ":"").yabp_format_price($item->item_price); ?><br /><br /><?php if (empty($item->item_ratingspan)) { _e('Not rated yet', 'yabp'); } else { echo $item->item_ratingspan; } ?></td>
                     <td><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;action=update_item&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Update this item now', 'yabp'); ?>"><?php _e('Update now', 'yabp'); ?></a><br /><br />
-                    <?php _e('Update interval', 'yabp'); ?>:<br /><span class="update_intervals" id="update_interval-<?php echo $item->entry_id; ?>" title="<?php _e('Edit value', 'yabp'); ?>"><?php echo yabp_format_updateinterval(yabp_entry_updateinterval_via_entry_id($item->entry_id)); ?></span><br /><br />
-                    <?php _e('Thumbnail size', 'yabp'); ?>:<br /><span class="thumb_sizes" id="thumb_size-<?php echo $item->entry_id; ?>" title="<?php _e('Edit value', 'yabp'); ?>"><?php echo yabp_format_thumbsize(yabp_entry_thumbsize_via_entry_id($item->entry_id)); ?></span><br /><br />
-                    <?php _e('Button type', 'yabp'); ?>:<br /><span class="button_types" id="button_type-<?php echo $item->entry_id; ?>" title="<?php _e('Edit value', 'yabp'); ?>"><?php echo yabp_format_buttontype(yabp_entry_buttontype_via_entry_id($item->entry_id)); ?></span><br /><br />
+                    <?php _e('Update interval', 'yabp'); ?>:<br /><span class="update_intervals" id="update_interval-<?php echo $item->entry_id; ?>" title="<?php _e('Edit value', 'yabp'); ?>"><?php echo yabp_format_updateinterval(yabp_entry_value_via_entry_id($item->entry_id, 'entry_updateinterval')); ?></span><br /><br />
+                    <?php _e('Thumbnail size', 'yabp'); ?>:<br /><span class="thumb_sizes" id="thumb_size-<?php echo $item->entry_id; ?>" title="<?php _e('Edit value', 'yabp'); ?>"><?php echo yabp_format_thumbsize(yabp_entry_value_via_entry_id($item->entry_id, 'entry_thumb')); ?></span><br /><br />
+                    <?php _e('Button type', 'yabp'); ?>:<br /><span class="button_types" id="button_type-<?php echo $item->entry_id; ?>" title="<?php _e('Edit value', 'yabp'); ?>"><?php echo yabp_format_buttontype(yabp_entry_value_via_entry_id($item->entry_id, 'entry_buttontype')); ?></span><br /><br />
                     <a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-add-item&amp;action=replace_item&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Replace this item with an item from the bol.com Catalog', 'yabp'); ?>"><?php _e('Replace', 'yabp'); ?></a><br /><br />
                     <a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;action=delete_item&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Delete this item', 'yabp'); ?>"><?php _e('Delete', 'yabp'); ?></a></td>
                     </tr><tr><td colspan="5" style="<?php if ($i != count($items_entries)) { ?>border-bottom: 1px solid grey; <?php } ?>text-align: center;">
-                     <?php if (yabp_entry_showthumb_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showthumb&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the thumbnail', 'yabp'); ?>"><?php _e('Hide thumbnail', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showthumb&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the thumbnail', 'yabp'); ?>"><?php _e('Show thumbnail', 'yabp'); ?></a><?php } ?>
-                     | <?php if (yabp_entry_showprice_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showprice&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the price', 'yabp'); ?>"><?php _e('Hide price', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showprice&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the price', 'yabp'); ?>"><?php _e('Show price', 'yabp'); ?></a><?php } ?> 
-                     | <?php if (yabp_entry_showlistprice_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showlistprice&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the list price', 'yabp'); ?>"><?php _e('Hide list price', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showlistprice&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the list price', 'yabp'); ?>"><?php _e('Show list price', 'yabp'); ?></a><?php } ?> 
-                     | <?php if (yabp_entry_showtitle_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showtitle&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the title', 'yabp'); ?>"><?php _e('Hide title', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showtitle&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the title', 'yabp'); ?>"><?php _e('Show title', 'yabp'); ?></a><?php } ?> 
-                     | <?php if (yabp_entry_showsubtitle_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showsubtitle&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the subtitle', 'yabp'); ?>"><?php _e('Hide subtitle', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showsubtitle&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the subtitle', 'yabp'); ?>"><?php _e('Show subtitle', 'yabp'); ?></a><?php } ?> 
-                     | <?php if (yabp_entry_showavailability_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showavailability&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the availability', 'yabp'); ?>"><?php _e('Hide availability', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showavailability&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the availability', 'yabp'); ?>"><?php _e('Show availability', 'yabp'); ?></a><?php } ?> 
-                     | <?php if (yabp_entry_showrating_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showrating&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the rating', 'yabp'); ?>"><?php _e('Hide rating', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showrating&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the rating', 'yabp'); ?>"><?php _e('Show rating', 'yabp'); ?></a><?php } ?> 
-                     | <?php if (yabp_entry_showbutton_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showbutton&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the button', 'yabp'); ?>"><?php _e('Hide button', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showbutton&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the button', 'yabp'); ?>"><?php _e('Show button', 'yabp'); ?></a><?php } ?>
-                     | <?php if (yabp_entry_putincart_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_putincart&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to do not put product directly in cart', 'yabp'); ?>"><?php _e('Do not put in cart', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_putincart&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to put product directly in cart', 'yabp'); ?>"><?php _e('Do put in cart', 'yabp'); ?></a><?php } ?> 
-                     | <?php if (yabp_entry_recordimpressions_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_recordimpressions&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to do not record impressions', 'yabp'); ?>"><?php _e('Do not record impressions', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_recordimpressions&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to record impressions', 'yabp'); ?>"><?php _e('Do record impressions', 'yabp'); ?></a><?php } ?>
-                     | <?php if (yabp_entry_openinnewtab_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_openinnewtab&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to open item in the current tab', 'yabp'); ?>"><?php _e('Open item in current tab', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_openinnewtab&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to open item in a new tab', 'yabp'); ?>"><?php _e('Open item in new tab', 'yabp'); ?></a><?php } ?>
-                     | <?php if (yabp_entry_imgontop_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_imgontop&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show thumbnail above the product information', 'yabp'); ?>"><?php _e('Show thumbnail next to content', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_imgontop&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show thumbnail above the product information', 'yabp'); ?>"><?php _e('Show thumbnail above content', 'yabp'); ?></a><?php } ?>
-                     | <?php if (yabp_entry_showfreeshipping_via_entry_id($item->entry_id)) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showfreeshipping&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the \'Free shipping\' text', 'yabp'); ?>"><?php _e('Hide \'Free shipping\' text', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showfreeshipping&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the \'Free shipping\' text (when applicable)', 'yabp'); ?>"><?php _e('Show \'Free shipping\' text', 'yabp'); ?></a><?php } ?></td><?php                                
+                     <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showthumb')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showthumb&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the thumbnail', 'yabp'); ?>"><?php _e('Hide thumbnail', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showthumb&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the thumbnail', 'yabp'); ?>"><?php _e('Show thumbnail', 'yabp'); ?></a><?php } ?>
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showprice')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showprice&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the price', 'yabp'); ?>"><?php _e('Hide price', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showprice&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the price', 'yabp'); ?>"><?php _e('Show price', 'yabp'); ?></a><?php } ?> 
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showlistprice')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showlistprice&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the list price', 'yabp'); ?>"><?php _e('Hide list price', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showlistprice&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the list price', 'yabp'); ?>"><?php _e('Show list price', 'yabp'); ?></a><?php } ?> 
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showtitle')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showtitle&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the title', 'yabp'); ?>"><?php _e('Hide title', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showtitle&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the title', 'yabp'); ?>"><?php _e('Show title', 'yabp'); ?></a><?php } ?> 
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showsubtitle')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showsubtitle&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the subtitle', 'yabp'); ?>"><?php _e('Hide subtitle', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showsubtitle&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the subtitle', 'yabp'); ?>"><?php _e('Show subtitle', 'yabp'); ?></a><?php } ?> 
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showavailability')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showavailability&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the availability', 'yabp'); ?>"><?php _e('Hide availability', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showavailability&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the availability', 'yabp'); ?>"><?php _e('Show availability', 'yabp'); ?></a><?php } ?> 
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showrating')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showrating&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the rating', 'yabp'); ?>"><?php _e('Hide rating', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showrating&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the rating', 'yabp'); ?>"><?php _e('Show rating', 'yabp'); ?></a><?php } ?> 
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showbutton')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showbutton&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the button', 'yabp'); ?>"><?php _e('Hide button', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showbutton&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the button', 'yabp'); ?>"><?php _e('Show button', 'yabp'); ?></a><?php } ?>
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_putincart')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_putincart&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to do not put product directly in cart', 'yabp'); ?>"><?php _e('Do not put in cart', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_putincart&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to put product directly in cart', 'yabp'); ?>"><?php _e('Do put in cart', 'yabp'); ?></a><?php } ?> 
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_recordimpressions')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_recordimpressions&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to do not record impressions', 'yabp'); ?>"><?php _e('Do not record impressions', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_recordimpressions&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to record impressions', 'yabp'); ?>"><?php _e('Do record impressions', 'yabp'); ?></a><?php } ?>
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_openinnewtab')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_openinnewtab&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to open item in the current tab', 'yabp'); ?>"><?php _e('Open item in current tab', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_openinnewtab&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to open item in a new tab', 'yabp'); ?>"><?php _e('Open item in new tab', 'yabp'); ?></a><?php } ?>
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_imgontop')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_imgontop&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show thumbnail above the product information', 'yabp'); ?>"><?php _e('Show thumbnail next to content', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_imgontop&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show thumbnail above the product information', 'yabp'); ?>"><?php _e('Show thumbnail above content', 'yabp'); ?></a><?php } ?>
+                     | <?php if (yabp_entry_boolean_via_entry_id($item->entry_id, 'entry_showfreeshipping')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showfreeshipping&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the \'Free shipping\' text', 'yabp'); ?>"><?php _e('Hide \'Free shipping\' text', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;do=entry_setup&amp;action=entry_showfreeshipping&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the \'Free shipping\' text (when applicable)', 'yabp'); ?>"><?php _e('Show \'Free shipping\' text', 'yabp'); ?></a><?php } ?></td><?php                                
                 }
                 ?>
             </tr>
@@ -1204,7 +1441,7 @@ function yabp_itemlist_init() {
     global $wpdb, $table_name_yabp, $table_name_yabp_items;
 
     if (is_admin()) {
-        if (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['action']) && $_GET['action'] == 'update_item' && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_bolid_via_entry_id($_GET['entry_id'])) {
+        if (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['action']) && $_GET['action'] == 'update_item' && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_value_via_entry_id($_GET['entry_id'], 'entry_bolid')) {
             $entry_id = (int) $_GET['entry_id'];            
             yabp_item_update_via_entry_id($entry_id);            
 
@@ -1214,10 +1451,10 @@ function yabp_itemlist_init() {
             wp_redirect($_SERVER['PHP_SELF'].'?page=yabp-itemlist&p='.$p.'#yabp-'.$entry_id);        
             die('Done');
         }    
-        elseif (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_bolid_via_entry_id($_GET['entry_id'])) {
+        elseif (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['action']) && $_GET['action'] == 'delete_item' && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_value_via_entry_id($_GET['entry_id'], 'entry_bolid')) {
             $entry_id = (int) $_GET['entry_id'];
             
-            $oldvalue = yabp_entry_updateinterval_via_entry_id($entry_id);
+            $oldvalue = yabp_entry_value_via_entry_id($entry_id, 'entry_updateinterval');
             
             $wpdb->query("DELETE FROM `".$table_name_yabp."` WHERE entry_id = '".$entry_id."'");
             $wpdb->query("DELETE FROM `".$table_name_yabp_items."` WHERE entry_id = '".$entry_id."'");            
@@ -1233,7 +1470,7 @@ function yabp_itemlist_init() {
             wp_redirect($_SERVER['PHP_SELF'].'?page=yabp-itemlist'.$p);        
             die('Done');
         }    
-        elseif (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['do']) && $_GET['do'] == 'entry_setup' && isset($_GET['action']) && ($_GET['action'] == 'entry_showthumb' || $_GET['action'] == 'entry_showprice' || $_GET['action'] == 'entry_showlistprice' || $_GET['action'] == 'entry_showtitle' || $_GET['action'] == 'entry_showsubtitle' || $_GET['action'] == 'entry_showavailability' || $_GET['action'] == 'entry_showrating' || $_GET['action'] == 'entry_showbutton' || $_GET['action'] == 'entry_putincart' || $_GET['action'] == 'entry_recordimpressions' || $_GET['action'] == 'entry_openinnewtab' || $_GET['action'] == 'entry_imgontop' || $_GET['action'] == 'entry_country' || $_GET['action'] == 'entry_showfreeshipping') && isset($_GET['value']) && ($_GET['value'] == 'true' || $_GET['value'] == 'false' || (is_numeric($_GET['value']) && ($_GET['value'] == 1 || $_GET['value'] == 2))) && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_bolid_via_entry_id($_GET['entry_id'])) {
+        elseif (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['do']) && $_GET['do'] == 'entry_setup' && isset($_GET['action']) && ($_GET['action'] == 'entry_showthumb' || $_GET['action'] == 'entry_showprice' || $_GET['action'] == 'entry_showlistprice' || $_GET['action'] == 'entry_showtitle' || $_GET['action'] == 'entry_showsubtitle' || $_GET['action'] == 'entry_showavailability' || $_GET['action'] == 'entry_showrating' || $_GET['action'] == 'entry_showbutton' || $_GET['action'] == 'entry_putincart' || $_GET['action'] == 'entry_recordimpressions' || $_GET['action'] == 'entry_openinnewtab' || $_GET['action'] == 'entry_imgontop' || $_GET['action'] == 'entry_country' || $_GET['action'] == 'entry_showfreeshipping') && isset($_GET['value']) && ($_GET['value'] == 'true' || $_GET['value'] == 'false' || (is_numeric($_GET['value']) && ($_GET['value'] == 1 || $_GET['value'] == 2))) && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_entry_value_via_entry_id($_GET['entry_id'], 'entry_bolid')) {
             $entry_id = (int) $_GET['entry_id'];            
             $column = $_GET['action'];            
                         
@@ -1253,12 +1490,12 @@ function yabp_itemlist_init() {
         elseif (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['action']) && $_GET['action'] == 'edititemupdateinterval') {
             $getid = str_replace("update_interval-","",$_POST['element_id']);
             $entry_id = (int) $getid;
-            if (!yabp_entry_bolid_via_entry_id($entry_id)) { die(__('Invalid product', 'yabp')); }            
+            if (!yabp_entry_value_via_entry_id($entry_id, 'entry_bolid')) { die(__('Invalid product', 'yabp')); }            
             $updateinterval = trim($_POST['update_value']);            
-            if ($updateinterval == "") { die(yabp_format_updateinterval(yabp_entry_updateinterval_via_entry_id($entry_id))); }            
+            if ($updateinterval == "") { die(yabp_format_updateinterval(yabp_entry_value_via_entry_id($entry_id, 'entry_updateinterval'))); }            
             $updateinterval_formated = yabp_format_updateinterval($updateinterval, true);            
             
-            $oldvalue = yabp_entry_updateinterval_via_entry_id($entry_id);
+            $oldvalue = yabp_entry_value_via_entry_id($entry_id, 'entry_updateinterval');
             $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_updateinterval = '".esc_sql($updateinterval_formated)."' WHERE entry_id = '".esc_sql($entry_id)."'");
             if (yabp_cron_updateinterval_check_number($oldvalue) < 1) { yabp_cron_handle_eventstatus($oldvalue, false); }
             elseif (yabp_cron_updateinterval_check_number($updateinterval_formated) == 1) { yabp_cron_handle_eventstatus($updateinterval_formated, true); }
@@ -1268,9 +1505,9 @@ function yabp_itemlist_init() {
         elseif (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['action']) && $_GET['action'] == 'edititemthumbsize') {
             $getid = str_replace("thumb_size-","",$_POST['element_id']);
             $entry_id = (int) $getid;
-            if (!yabp_entry_bolid_via_entry_id($entry_id)) { die(__('Invalid product', 'yabp')); }
+            if (!yabp_entry_value_via_entry_id($entry_id, 'entry_bolid')) { die(__('Invalid product', 'yabp')); }
             $thumb_size = trim($_POST['update_value']);            
-            if ($thumb_size == "") { die(yabp_format_thumbsize(yabp_entry_thumbsize_via_entry_id($entry_id))); }            
+            if ($thumb_size == "") { die(yabp_format_thumbsize(yabp_entry_value_via_entry_id($entry_id, 'entry_thumb'))); }            
             $thumb_size_formated = yabp_format_thumbsize($thumb_size, true);            
             $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_thumb = '".esc_sql($thumb_size_formated)."' WHERE entry_id = '".esc_sql($entry_id)."'");
             die(trim($thumb_size));
@@ -1278,9 +1515,9 @@ function yabp_itemlist_init() {
         elseif (isset($_GET['page']) && $_GET['page'] == "yabp-itemlist" && isset($_GET['action']) && $_GET['action'] == 'edititembuttontype') {
             $getid = str_replace("button_type-","",$_POST['element_id']);
             $entry_id = (int) $getid;
-            if (!yabp_entry_bolid_via_entry_id($entry_id)) { die(__('Invalid product', 'yabp')); }            
+            if (!yabp_entry_value_via_entry_id($entry_id, 'entry_bolid')) { die(__('Invalid product', 'yabp')); }            
             $buttontype = trim($_POST['update_value']);            
-            if ($buttontype == "") { die(yabp_format_buttontype(yabp_entry_buttontype_via_entry_id($entry_id))); }            
+            if ($buttontype == "") { die(yabp_format_buttontype(yabp_entry_value_via_entry_id($entry_id, 'entry_buttontype'))); }            
             $buttontype_formated = yabp_format_buttontype($buttontype, true);                        
             $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_buttontype = '".esc_sql($buttontype_formated)."' WHERE entry_id = '".esc_sql($entry_id)."'");
             die(trim($buttontype));
@@ -1289,6 +1526,307 @@ function yabp_itemlist_init() {
 }
 
 add_action('init', 'yabp_itemlist_init');
+
+function yabp_deals() {
+    global $wpdb, $table_name_yabp_deals, $table_name_yabp_deals_items, $yabp_dealslist_count, $yabp_deals_keywords, $yabp_deals_keywords_strings, $yabp_deals_daydeals_keywords, $yabp_deals_daydeals_keywords_strings, $yabp_deals_updateinterval_default, $yabp_bolcom_deals_feed_link;
+    
+    if (!get_option('yabp_dealslist_count')) { $perpage = $yabp_dealslist_count; }
+    else { $perpage = get_option('yabp_dealslist_count'); }
+
+    ?>
+    <div class="wrap">
+    <h2>Yet Another bol.com Plugin</h2>    
+    <?php    
+    if (isset($_GET['action']) && $_GET['action'] == "add_deal") { 
+    ?>    
+    <h3><?php _e('Add a deal', 'yabp'); ?></h3>        
+    <?php 
+        if (!get_option('yabp_siteid') || get_option('yabp_siteid') == "") { ?><p><?php printf(__('Please enter your siteid at the <a href="%s">Options page</a> to continue.', 'yabp'), $_SERVER['PHP_SELF'].'?page=yabp'); ?></p><?php }
+        elseif (isset($_POST['yabp_add_deal_submit']) && isset($_POST['yabp_add_deal_keyword'])) {
+            $keyword = trim($_POST['yabp_add_deal_keyword']);
+            $dealid = $_POST['yabp_add_deal_'.$keyword.'_id'];
+            $dealtype = $_POST['yabp_add_deal_'.$keyword.'_type'];
+            if ($dealtype == 3) { $dealname = $yabp_deals_daydeals_keywords_strings[$dealid]; }
+            else { $dealname = $yabp_deals_keywords_strings[$dealid]; }
+            if (isset($_POST['yabp_deals_replace_item_entry_id']) && is_numeric($_POST['yabp_deals_replace_item_entry_id']) && yabp_deals_entry_value_via_entry_id($_POST['yabp_deals_replace_item_entry_id'], 'entry_updateinterval') && isset($_POST['yabp_deals_replace_item_entry_id_p']) && is_numeric($_POST['yabp_deals_replace_item_entry_id_p'])) {
+                $yabp_deals_replace_item_entry_id = $_POST['yabp_deals_replace_item_entry_id'];
+                $yabp_deals_replace_item_entry_p = $_POST['yabp_deals_replace_item_entry_id_p'];                
+                $trytoreplace = yabp_add_deal_replace($yabp_deals_replace_item_entry_id, $keyword, $dealtype);
+                if ($trytoreplace) { 
+                    yabp_deals_update($yabp_deals_replace_item_entry_id);                    
+                    echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#B9FF9C; border:1px solid #ccc;"><p>'.sprintf(__('Deal successfully replaced. <a href="%1$s">Click here</a> to view its settings.', 'yabp'), $_SERVER['PHP_SELF'].'?page=yabp-deals&p='.$yabp_deals_replace_item_entry_p.'#yabp-deal-'.$yabp_deals_replace_item_entry_id).'</p></div>';
+                }
+                else { echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>'.__('The selected deal is already found in the database, or an error occured. If you did not select a deal twice, please try again later.', 'yabp').'</p></div>'; }                
+            }
+            else {                       
+                $i = 0;
+                $trytoadd = yabp_add_deal_new($keyword,$dealtype,false,true);
+                if ($trytoadd) { 
+                    yabp_deals_update($trytoadd);
+                    $i++;                         
+                    $addid = $trytoadd;
+                }                
+                if ($wpdb->get_var("SELECT COUNT(entry_id) FROM `".$table_name_yabp_deals."`") == 1) { yabp_deals_cron_handle_eventstatus(true); }                
+                if ($i > 0) { echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#B9FF9C; border:1px solid #ccc;"><p>'.sprintf(__('Deal \'%1$s\' successfully added. <a href="%2$s">Click here</a> to retrieve the shortcode.', 'yabp'), $dealname, $_SERVER['PHP_SELF'].'?page=yabp-deals#yabp-deal-'.$addid).'</p></div>'; }
+                else { echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>'.__('The selected deal is already found in the database, or an error occured. If you did not select a deal twice, please try again later.', 'yabp').'</p></div>'; }
+            }
+        }
+        else {    
+    ?>    
+    <p><?php printf(__('Please select a category. The digit next to the categories shows the current count of available deals%1$s.', 'yabp'), ' (<a href="#" style="text-decoration: none;" title="'.__('The available deals and categories depend on the offers at bol.com.', 'yabp').'">?</a>)'); ?></p>
+    <?php if (isset($_GET['do']) && $_GET['do'] == "replace" && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_deals_entry_value_via_entry_id($_GET['entry_id'], 'entry_updateinterval') && isset($_GET['p']) && is_numeric($_GET['p'])) { $replace_entry_id = $_GET['entry_id']; $replace_entry_id_p = $_GET['p']; ?><div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#B5EBFF; border:1px solid #ccc;"><p><?php printf(__('Deal category \'%1$s\' will be replaced by the category you select from the list. <a href="%2$s">Click here</a> to cancel this, and to go back to the deal\'s settings.', 'yabp'), yabp_deals_get_category_nicename_via_keyword(yabp_deals_entry_value_via_entry_id($replace_entry_id, 'entry_keyword'), yabp_deals_entry_value_via_entry_id($replace_entry_id, 'entry_updateinterval')), $_SERVER['PHP_SELF'].'?page=yabp-deals&p='.$replace_entry_id_p.'#yabp-deal-'.$replace_entry_id); ?></p></div><?php $doreplace = true; } else { $doreplace = false; } ?>
+    <form method="post">        
+        <p>
+        <?php            
+        $deals = file_get_contents($yabp_bolcom_deals_feed_link);    
+        $current_deals = array();
+        $phpobject = simplexml_load_string(utf8_encode($deals));
+        $i = 0;
+        foreach ($phpobject->offer as $item) {
+            array_push($current_deals, yabp_deals_id_format($item->offerId));
+        }
+        $current_deals_count = array_count_values($current_deals);
+                
+        $i = 0;
+        foreach ($yabp_deals_daydeals_keywords as $kw_dd) {
+            if (yabp_add_deal_new($yabp_deals_daydeals_keywords[$i], 3, true)) { $dup = true; }
+            else { $dup = false; }            
+            echo '<input type="radio" id="yabp_add_deal_'.$yabp_deals_daydeals_keywords[$i].'" name="yabp_add_deal_keyword" value="'.$yabp_deals_daydeals_keywords[$i].'"'.($dup?' disabled="disabled"':'').' /> <label for="yabp_add_deal_'.$yabp_deals_daydeals_keywords[$i].'" title="'.($dup?sprintf(__('Deal category \'%1$s\' is already found in the database', 'yabp'), __($yabp_deals_daydeals_keywords_strings[$i], 'yabp')):sprintf(__('Add deal category \'%1$s\' to the database', 'yabp'), __($yabp_deals_daydeals_keywords_strings[$i], 'yabp'))).'">'.($dup?'<span style="text-decoration: line-through;">':'').__($yabp_deals_daydeals_keywords_strings[$i], 'yabp').($dup?'</span>':'').' ('.($yabp_deals_daydeals_keywords[$i]=="1"&&count($current_deals)>0?1:(in_array($yabp_deals_daydeals_keywords[$i], $current_deals)?$current_deals_count[$yabp_deals_daydeals_keywords[$i]]:"0")).')</label><input type="hidden" name="yabp_add_deal_'.$yabp_deals_daydeals_keywords[$i].'_id" value="'.$i.'" /><input type="hidden" name="yabp_add_deal_'.$yabp_deals_daydeals_keywords[$i].'_type" value="3" /><br />';
+            $i++;
+        }
+        $i = 0;
+        foreach ($yabp_deals_keywords as $kw) {
+            if (yabp_add_deal_new($yabp_deals_keywords[$i], $yabp_deals_updateinterval_default, true)) { $dup = true; }
+            else { $dup = false; }            
+            echo '<input type="radio" id="yabp_add_deal_'.$yabp_deals_keywords[$i].'" name="yabp_add_deal_keyword" value="'.$yabp_deals_keywords[$i].'"'.($dup?' disabled="disabled"':'').' /> <label for="yabp_add_deal_'.$yabp_deals_keywords[$i].'" title="'.($dup?sprintf(__('Deal category \'%1$s\' is already found in the database', 'yabp'), __($yabp_deals_keywords_strings[$i], 'yabp')):sprintf(__('Add deal category \'%1$s\' to the database', 'yabp'), __($yabp_deals_keywords_strings[$i], 'yabp'))).'">'.($dup?'<span style="text-decoration: line-through;">':'').__($yabp_deals_keywords_strings[$i], 'yabp').($dup?'</span>':'').' ('.(in_array($yabp_deals_keywords[$i], $current_deals)?$current_deals_count[$yabp_deals_keywords[$i]]:"0").')</label><input type="hidden" name="yabp_add_deal_'.$yabp_deals_keywords[$i].'_id" value="'.$i.'" /><input type="hidden" name="yabp_add_deal_'.$yabp_deals_keywords[$i].'_type" value="'.$yabp_deals_updateinterval_default.'" /><br />';
+            $i++;
+        }    
+        ?>
+        </p>
+        <p class="submit">
+            <input class="button-primary" name="yabp_add_deal_submit" type="submit" value="<?php ($doreplace?_e('Replace', 'yabp'):_e('Add', 'yabp')); ?>" />
+            <?php if ($doreplace) { ?><input type="hidden" name="yabp_deals_replace_item_entry_id" id="yabp_deals_replace_item_entry_id" value="<?php echo $replace_entry_id; ?>" /><input type="hidden" name="yabp_deals_replace_item_entry_id_p" id="yabp_deals_replace_item_entry_id_p" value="<?php echo $replace_entry_id_p; ?>" /><?php } ?>
+        </p>                
+    </form>
+    <?php 
+        }
+    }
+    else { 
+    ?>
+    <p class="submit">
+        <a href="<?php echo $_SERVER['PHP_SELF'].'?page=yabp-deals&amp;action=add_deal'; ?>"><span class="button-primary"><?php _e('Add a deal', 'yabp'); ?></span></a>
+    </p>
+    <h3><?php _e('Deals', 'yabp'); ?></h3>        
+    <?php        
+    
+    $_page = isset($_GET['p']) && intval($_GET['p']) != '' ? $_GET['p'] : 1;    
+    $gettotal = $wpdb->get_row("SELECT COUNT(entry_id) FROM `".$table_name_yabp_deals."`",ARRAY_N);
+    $totalpage = ceil( $gettotal[0] / (float) $perpage);
+    $limit = (($_page-1) * $perpage).','.$perpage;
+    
+    if ($gettotal[0] == 0) {
+        echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>'.__('No deals can be found.', 'yabp').'</p></div>'."\n";
+        return;
+    }
+            
+    if ($_page > $totalpage) {
+        echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>'.sprintf(__('Invalid page. <a href="%s">Click here</a> to go back.', 'yabp'), $_SERVER['PHP_SELF'].'?page=yabp-deals').'</p></div>';
+        return;
+    }
+
+    $nav = yabp_pagelinks($_SERVER['PHP_SELF'].'?page=yabp-deals&amp;p=', 10, $totalpage, $_page);    
+    $items_entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp_deals."` LIMIT ".$limit);
+    
+    ?>
+    <script type="text/javascript" src="<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)).'/'; ?>js/jquery.inplace.js"></script>
+    <script type="text/javascript">
+        function sure() {
+            var ask = confirm('<?php _e('Are you sure?', 'yabp'); ?>');
+            if (ask == true) { return true; }
+            else { return false; }
+        }
+        
+        jQuery(document).ready(function() {            
+            jQuery(".update_intervals").editInPlace({
+                url: "<?php echo $_SERVER['PHP_SELF']?>?page=yabp-deals&action=editdealsitemupdateinterval",
+                field_type: "select",
+                select_options: "<?php _e('weekly', 'yabp'); ?>,<?php _e('daily', 'yabp'); ?>",
+                default_text: "[<?php _e('Click to add', 'yabp'); ?>]",
+                select_text: "<?php _e('Choose value', 'yabp'); ?>",
+                save_button: '<input type="submit" class="inplace_save" value="<?php _e('Save', 'yabp'); ?>" />',
+                cancel_button: '<input type="submit" class="inplace_cancel" value="<?php _e('Cancel', 'yabp'); ?>" />',                
+                saving_image: "<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)); ?>/img/loading_small.gif"
+              });
+            jQuery(".button_types").editInPlace({
+                url: "<?php echo $_SERVER['PHP_SELF']?>?page=yabp-deals&action=editdealsitembuttontype",
+                field_type: "select",
+                select_options: "<?php _e('View on', 'yabp'); ?>,<?php _e('View on (alt)', 'yabp'); ?>,<?php _e('Buy at', 'yabp'); ?>,<?php _e('Buy at (alt)', 'yabp'); ?>",
+                default_text: "[<?php _e('Click to add', 'yabp'); ?>]",
+                select_text: "<?php _e('Choose value', 'yabp'); ?>",
+                save_button: '<input type="submit" class="inplace_save" value="<?php _e('Save', 'yabp'); ?>" />',
+                cancel_button: '<input type="submit" class="inplace_cancel" value="<?php _e('Cancel', 'yabp'); ?>" />',                
+                saving_image: "<?php echo get_bloginfo('wpurl').'/'.PLUGINDIR.'/'.basename(dirname(__FILE__)); ?>/img/ajax_loading_small.gif"
+              });
+        }); 
+    </script>
+    <?php if ($_page == 1) { ?><div style="margin-bottom:10px; padding:5px; background:#B5EBFF; border:1px solid #ccc;"><p><?php _e('You can add subids at your links by adding \'subid="your sub id"\' to the shortcodes. For example: [yabp-deal 1 subid="homepage header"]. You can edit the update interval and button type by clicking on it\'s current value.', 'yabp'); ?></p></div><?php } ?>
+    <table class="widefat comments fixed" cellspacing="0">
+        <thead><tr><th># / <?php _e('Shortcode', 'yabp'); ?> (<a href="#" title="<?php _e('Paste shortcodes of deals anywhere on your website to display these deals with their own settings.', 'yabp'); ?>">?</a>)</th><th><?php _e('Thumbnail', 'yabp'); ?></th><th><?php _e('Category', 'yabp'); ?> / <?php _e('Title', 'yabp'); ?> / <?php _e('Last update', 'yabp'); ?></th><th><?php _e('Price', 'yabp'); ?> / <?php _e('Rating', 'yabp'); ?> / <?php _e('Time remaining', 'yabp'); ?></th><th><?php _e('Options', 'yabp'); ?></th></tr></thead>
+        <tbody>
+    <?php
+        $i = 0;
+        foreach ($items_entries as $item_entry) {            
+            $item = $wpdb->get_row("SELECT * FROM `".$table_name_yabp_deals_items."` WHERE entry_id = '".esc_sql($item_entry->entry_id)."'");            
+            $i++;
+            ?>
+            <tr>
+                <?php if (!yabp_deals_title_via_entry_id($item_entry->entry_id)) { 
+                    /*if ($i == count($items_entries)) { ?><td><a name="yabp-deal-<?php echo $item->entry_id; ?>"></a><?php echo ((($_page-1) * $perpage) + $i); ?></td><td colspan="3"><?php _e('Click \'Force update\' to retrieve this deal\'s data.', 'yabp'); ?></td><td><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=delete_deal&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" onclick="return sure()"><?php _e('Delete', 'yabp'); ?></a></td><?php }
+                    else { ?><td style="border-bottom: 1px solid grey;"><?php echo ((($_page-1) * $perpage) + $i); ?></td><td colspan="3" style="border-bottom: 1px solid grey;"><?php _e('Click \'Force update\' to retrieve this deal\'s data.', 'yabp'); ?></td><td style="border-bottom: 1px solid grey;"><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=delete_deal&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" onclick="return sure()"><?php _e('Delete', 'yabp'); ?></a></td><?php }*/
+                    if ($i == count($items_entries)) { 
+                        ?><td><a name="yabp-deal-<?php echo $item_entry->entry_id; ?>"></a><?php echo ((($_page-1) * $perpage) + $i); ?><br /><br /><input value="<?php echo yabp_format_shortcode($item_entry->entry_id, 'deals'); ?>" size="<?php echo strlen(yabp_format_shortcode($item_entry->entry_id, 'deals')); ?>" onClick="this.setSelectionRange(0, this.value.length)" /></td>
+                        <td></td>
+                        <td colspan="2"><strong><?php echo yabp_deals_get_category_nicename_via_keyword(yabp_deals_entry_value_via_entry_id($item_entry->entry_id, 'entry_keyword'), yabp_deals_entry_value_via_entry_id($item_entry->entry_id, 'entry_updateinterval')); ?></strong><br /><br /><?php _e('Click \'Update now\' to retrieve this deal\'s data.', 'yabp'); ?></td>
+                        <td><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=update_deal&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Update this deal now', 'yabp'); ?>"><?php _e('Update now', 'yabp'); ?></a><br /><br /><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=add_deal&amp;do=replace&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Replace this deal\'s category with another one', 'yabp'); ?>"><?php _e('Replace', 'yabp'); ?></a><br /><br /><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=delete_deal&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" onclick="return sure()"><?php _e('Delete', 'yabp'); ?></a></td><?php 
+                    }
+                    else { ?>
+                        <td style="border-bottom: 1px solid grey;"><a name="yabp-deal-<?php echo $item_entry->entry_id; ?>"></a><?php echo ((($_page-1) * $perpage) + $i); ?><br /><br /><input value="<?php echo yabp_format_shortcode($item_entry->entry_id, 'deals'); ?>" size="<?php echo strlen(yabp_format_shortcode($item_entry->entry_id, 'deals')); ?>" onClick="this.setSelectionRange(0, this.value.length)" /></td>
+                        <td style="border-bottom: 1px solid grey;"></td>
+                        <td colspan="2" style="border-bottom: 1px solid grey;"><strong><?php echo yabp_deals_get_category_nicename_via_keyword(yabp_deals_entry_value_via_entry_id($item_entry->entry_id, 'entry_keyword'), yabp_deals_entry_value_via_entry_id($item_entry->entry_id, 'entry_updateinterval')); ?></strong><br /><br /><?php _e('Click \'Update now\' to retrieve this deal\'s data.', 'yabp'); ?></td>
+                        <td style="border-bottom: 1px solid grey;"><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=update_deal&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Update this deal now', 'yabp'); ?>"><?php _e('Update now', 'yabp'); ?></a><br /><br /><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=add_deal&amp;do=replace&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Replace this deal\'s category with another one', 'yabp'); ?>"><?php _e('Replace', 'yabp'); ?></a><br /><br /><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=delete_deal&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" onclick="return sure()"><?php _e('Delete', 'yabp'); ?></a></td><?php
+                    }
+                }
+                else {
+                    if (yabp_deals_title_via_entry_id($item_entry->entry_id, true) == -1) {
+                        if ($i == count($items_entries)) { 
+                            ?><td><a name="yabp-deal-<?php echo $item->entry_id; ?>"></a><?php echo ((($_page-1) * $perpage) + $i); ?><br /><br /><input value="<?php echo yabp_format_shortcode($item->entry_id, 'deals'); ?>" size="<?php echo strlen(yabp_format_shortcode($item->entry_id, 'deals')); ?>" onClick="this.setSelectionRange(0, this.value.length)" /></td>
+                            <td></td>
+                            <td colspan="2"><strong><?php echo yabp_deals_get_category_nicename_via_keyword(yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_keyword'), yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_updateinterval')); ?></strong><br /><br /><?php _e('No deals found for this category since the last update. The amount of available deals depends on the offers at bol.com. It is possible deals at this category are available again next week. In the mean time, the deal is hidden or it is replaced by a random product, depending on your settings. You can also replace this deal now.', 'yabp'); ?><br /><br /><?php echo yabp_format_time($item->time); ?></td>
+                            <td><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=update_deal&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Update this deal now', 'yabp'); ?>"><?php _e('Update now', 'yabp'); ?></a><br /><br /><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=add_deal&amp;do=replace&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Replace this deal\'s category with another one', 'yabp'); ?>"><?php _e('Replace', 'yabp'); ?></a><br /><br /><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=delete_deal&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" onclick="return sure()"><?php _e('Delete', 'yabp'); ?></a></td><?php 
+                        }
+                        else { ?>
+                            <td style="border-bottom: 1px solid grey;"><a name="yabp-deal-<?php echo $item->entry_id; ?>"></a><?php echo ((($_page-1) * $perpage) + $i); ?><br /><br /><input value="<?php echo yabp_format_shortcode($item->entry_id, 'deals'); ?>" size="<?php echo strlen(yabp_format_shortcode($item->entry_id, 'deals')); ?>" onClick="this.setSelectionRange(0, this.value.length)" /></td>
+                            <td style="border-bottom: 1px solid grey;"></td>
+                            <td colspan="2" style="border-bottom: 1px solid grey;"><strong><?php echo yabp_deals_get_category_nicename_via_keyword(yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_keyword'), yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_updateinterval')); ?></strong><br /><br /><?php _e('No deals found for this category since the last update. The amount of available deals depends on the offers at bol.com. It is possible deals at this category are available again next week. In the mean time, the deal is hidden or it is replaced by a random product, depending on your settings. You can also replace this deal now.', 'yabp'); ?><br /><br /><?php echo yabp_format_time($item->time); ?></td>
+                            <td style="border-bottom: 1px solid grey;"><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=update_deal&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Update this deal now', 'yabp'); ?>"><?php _e('Update now', 'yabp'); ?></a><br /><br /><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=add_deal&amp;do=replace&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Replace this deal\'s category with another one', 'yabp'); ?>"><?php _e('Replace', 'yabp'); ?></a><br /><br /><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=delete_deal&amp;entry_id=".$item_entry->entry_id."&amp;p=".$_page; ?>" onclick="return sure()"><?php _e('Delete', 'yabp'); ?></a></td><?php 
+                        }
+                    }
+                    else {                               
+                        ?><td><a name="yabp-deal-<?php echo $item->entry_id; ?>"></a><strong><?php echo ((($_page-1) * $perpage) + $i); ?></strong><br /><br /><input value="<?php echo yabp_format_shortcode($item->entry_id, 'deals'); ?>" size="<?php echo strlen(yabp_format_shortcode($item->entry_id, 'deals')); ?>" onClick="this.setSelectionRange(0, this.value.length)" /></td>
+                        <td><a href="<?php echo $item->item_externalurl; ?>"><img alt="<?php echo $item->item_title; ?>" title="<?php echo $item->item_title; ?>" src="<?php echo $item->item_thumb; ?>" /></a></td>
+                        <td><strong><?php echo yabp_deals_get_category_nicename_via_keyword(yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_keyword'), yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_updateinterval')); ?></strong><br /><br /><a href="<?php echo $item->item_externalurl; ?>"><?php echo $item->item_title; ?></a><br /><br /><?php echo yabp_format_time($item->time); ?></td>
+                        <td><?php echo ($item->item_listprice>0?"<span style=\"text-decoration: line-through;\">".yabp_format_price($item->item_listprice)."</span> ":"").yabp_format_price($item->item_price); ?><br /><br /><?php if (empty($item->item_ratingspan)) { _e('Not rated yet', 'yabp'); } else { echo $item->item_ratingspan; } ?><br /><br /><?php if (yabp_deals_countdown_format($item->item_enddate, time(), true)) { _e('Expired', 'yabp'); } else { echo yabp_deals_countdown_format($item->item_enddate, time()); } ?></td>
+                        <td><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=update_deal&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Update this deal now', 'yabp'); ?>"><?php _e('Update now', 'yabp'); ?></a><br /><br />
+                        <?php _e('Update interval', 'yabp'); ?>:<br /><?php if (yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_updateinterval') == 3) { echo __('daily deal', 'yabp').' (<a href="#" title="'.__('Daily deals are updated every day automatically.', 'yabp').'">?</a>)'; } else { ?><span class="update_intervals" id="update_interval-<?php echo $item->entry_id; ?>" title="<?php _e('Edit value', 'yabp'); ?>"><?php echo yabp_deals_format_updateinterval(yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_updateinterval')); ?></span><?php } ?><br /><br />
+                        <?php _e('Button type', 'yabp'); ?>:<br /><span class="button_types" id="button_type-<?php echo $item->entry_id; ?>" title="<?php _e('Edit value', 'yabp'); ?>"><?php echo yabp_format_buttontype(yabp_deals_entry_value_via_entry_id($item->entry_id, 'entry_buttontype')); ?></span><br /><br />
+                        <a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=add_deal&amp;do=replace&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Replace this deal\'s category with another one', 'yabp'); ?>"><?php _e('Replace', 'yabp'); ?></a><br /><br />
+                        <a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;action=delete_deal&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Delete this deal', 'yabp'); ?>"><?php _e('Delete', 'yabp'); ?></a></td>
+                        </tr><tr><td colspan="5" style="<?php if ($i != count($items_entries)) { ?>border-bottom: 1px solid grey; <?php } ?>text-align: center;">
+                        <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_showthumb')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showthumb&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the thumbnail', 'yabp'); ?>"><?php _e('Hide thumbnail', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showthumb&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the thumbnail', 'yabp'); ?>"><?php _e('Show thumbnail', 'yabp'); ?></a><?php } ?>
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_showprice')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showprice&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the price', 'yabp'); ?>"><?php _e('Hide price', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showprice&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the price', 'yabp'); ?>"><?php _e('Show price', 'yabp'); ?></a><?php } ?> 
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_showlistprice')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showlistprice&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the list price', 'yabp'); ?>"><?php _e('Hide list price', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showlistprice&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the list price', 'yabp'); ?>"><?php _e('Show list price', 'yabp'); ?></a><?php } ?> 
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_showtitle')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showtitle&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the title', 'yabp'); ?>"><?php _e('Hide title', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showtitle&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the title', 'yabp'); ?>"><?php _e('Show title', 'yabp'); ?></a><?php } ?> 
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_showrating')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showrating&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the rating', 'yabp'); ?>"><?php _e('Hide rating', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showrating&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the rating', 'yabp'); ?>"><?php _e('Show rating', 'yabp'); ?></a><?php } ?> 
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_showbutton')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showbutton&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the button', 'yabp'); ?>"><?php _e('Hide button', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showbutton&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the button', 'yabp'); ?>"><?php _e('Show button', 'yabp'); ?></a><?php } ?>
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_putincart')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_putincart&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to do not put deal directly in cart', 'yabp'); ?>"><?php _e('Do not put in cart', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_putincart&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to put deal directly in cart', 'yabp'); ?>"><?php _e('Do put in cart', 'yabp'); ?></a><?php } ?> 
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_recordimpressions')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_recordimpressions&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to do not record impressions', 'yabp'); ?>"><?php _e('Do not record impressions', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_recordimpressions&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to record impressions', 'yabp'); ?>"><?php _e('Do record impressions', 'yabp'); ?></a><?php } ?>
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_openinnewtab')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_openinnewtab&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to open deal in the current tab', 'yabp'); ?>"><?php _e('Open deal in current tab', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_openinnewtab&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to open deal in a new tab', 'yabp'); ?>"><?php _e('Open deal in new tab', 'yabp'); ?></a><?php } ?>
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_imgontop')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_imgontop&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show thumbnail above the deal information', 'yabp'); ?>"><?php _e('Show thumbnail next to content', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_imgontop&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show thumbnail above the deal information', 'yabp'); ?>"><?php _e('Show thumbnail above content', 'yabp'); ?></a><?php } ?>
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_showfreeshipping')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showfreeshipping&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the \'Free shipping\' text', 'yabp'); ?>"><?php _e('Hide \'Free shipping\' text', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showfreeshipping&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the \'Free shipping\' text (when applicable)', 'yabp'); ?>"><?php _e('Show \'Free shipping\' text', 'yabp'); ?></a><?php } ?>
+                        | <?php if (yabp_deals_entry_boolean_via_entry_id($item->entry_id, 'entry_showcountdown')) { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showcountdown&amp;value=false&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to hide the countdown', 'yabp'); ?>"><?php _e('Hide countdown', 'yabp'); ?></a><?php } else { ?><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-deals&amp;do=deals_entry_setup&amp;action=entry_showcountdown&amp;value=true&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" title="<?php _e('Click to show the countdown', 'yabp'); ?>"><?php _e('Show countdown', 'yabp'); ?></a><?php } ?></td><?php
+                    }
+                }
+                ?>
+            </tr>
+        <?php 
+        }        
+        if (empty($items_entries)) { ?><tr><td></td><td><?php _e('No deals found.', 'yabp'); ?></td></tr><?php }
+        ?>
+        </tbody>
+        <tfoot><tr><th># / <?php _e('Shortcode', 'yabp'); ?> (<a href="#" title="<?php _e('Paste shortcodes of deals anywhere on your website to display these deals with their own settings.', 'yabp'); ?>">?</a>)</th><th><?php _e('Thumbnail', 'yabp'); ?></th><th><?php _e('Category', 'yabp'); ?> / <?php _e('Title', 'yabp'); ?> / <?php _e('Last update', 'yabp'); ?></th><th><?php _e('Price', 'yabp'); ?> / <?php _e('Rating', 'yabp'); ?> / <?php _e('Time remaining', 'yabp'); ?></th><th><?php _e('Options', 'yabp'); ?></th></tr></tfoot>
+    </table>        
+    <?php
+    echo '<br />'.$nav;
+    }
+}
+
+function yabp_deals_init() {
+    global $wpdb, $table_name_yabp_deals, $table_name_yabp_deals_items;
+
+    if (is_admin()) {
+        if (isset($_GET['page']) && $_GET['page'] == "yabp-deals" && isset($_GET['action']) && $_GET['action'] == 'update_deal' && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_deals_entry_value_via_entry_id($_GET['entry_id'], 'entry_updateinterval')) {
+            $entry_id = (int) $_GET['entry_id'];            
+            yabp_deals_update($entry_id);
+
+            if (isset($_GET['p']) && is_numeric($_GET['p'])) { $p = $_GET['p']; }
+            else { $p = 1; }
+            
+            wp_redirect($_SERVER['PHP_SELF'].'?page=yabp-deals&p='.$p.'#yabp-deal-'.$entry_id);        
+            die('Done');
+        }    
+        elseif (isset($_GET['page']) && $_GET['page'] == "yabp-deals" && isset($_GET['action']) && $_GET['action'] == 'delete_deal' && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_deals_entry_value_via_entry_id($_GET['entry_id'], 'entry_updateinterval')) {
+            $entry_id = (int) $_GET['entry_id'];
+            
+            $wpdb->query("DELETE FROM `".$table_name_yabp_deals."` WHERE entry_id = '".$entry_id."'");
+            $wpdb->query("DELETE FROM `".$table_name_yabp_deals_items."` WHERE entry_id = '".$entry_id."'");            
+
+            if ($wpdb->get_var("SELECT COUNT(entry_id) FROM `".$table_name_yabp_deals."`") == 0) { yabp_deals_cron_handle_eventstatus(false); }
+            
+            if (isset($_GET['p']) && is_numeric($_GET['p'])) { 
+                if (yabp_page_exists_dealslist($_GET['p'])) { $p = "&p=".$_GET['p']; }
+                else { $p = "&p=".($_GET['p']-1); }
+            }
+            else { $p = ""; }
+            
+            wp_redirect($_SERVER['PHP_SELF'].'?page=yabp-deals'.$p);        
+            die('Done');
+        }    
+        elseif (isset($_GET['page']) && $_GET['page'] == "yabp-deals" && isset($_GET['do']) && $_GET['do'] == 'deals_entry_setup' && isset($_GET['action']) && ($_GET['action'] == 'entry_showthumb' || $_GET['action'] == 'entry_showprice' || $_GET['action'] == 'entry_showlistprice' || $_GET['action'] == 'entry_showtitle' || $_GET['action'] == 'entry_showrating' || $_GET['action'] == 'entry_showbutton' || $_GET['action'] == 'entry_putincart' || $_GET['action'] == 'entry_recordimpressions' || $_GET['action'] == 'entry_openinnewtab' || $_GET['action'] == 'entry_imgontop' || $_GET['action'] == 'entry_showfreeshipping' || $_GET['action'] == 'entry_showcountdown') && isset($_GET['value']) && ($_GET['value'] == 'true' || $_GET['value'] == 'false' || (is_numeric($_GET['value']) && ($_GET['value'] == 1 || $_GET['value'] == 2))) && isset($_GET['entry_id']) && is_numeric($_GET['entry_id']) && yabp_deals_entry_value_via_entry_id($_GET['entry_id'], 'entry_updateinterval')) {
+            $entry_id = (int) $_GET['entry_id'];            
+            $column = $_GET['action'];            
+                        
+            if (is_numeric($_GET['value'])) { $value = $_GET['value']; }
+            elseif ($_GET['value'] == 'true') { $value = 1; }
+            else { $value = 0; }
+            $wpdb->query("UPDATE `".$table_name_yabp_deals."` SET ".esc_sql($column)." = '".esc_sql($value)."' WHERE entry_id = '".esc_sql($entry_id)."'");                        
+            
+            if (isset($_GET['p']) && is_numeric($_GET['p'])) { $p = $_GET['p']; }
+            else { $p = 1; }
+            
+            wp_redirect($_SERVER['PHP_SELF'].'?page=yabp-deals&p='.$p.'#yabp-deal-'.$entry_id);        
+            die('Done');
+        }            
+        elseif (isset($_GET['page']) && $_GET['page'] == "yabp-deals" && isset($_GET['action']) && $_GET['action'] == 'editdealsitemupdateinterval') {
+            $getid = str_replace("update_interval-","",$_POST['element_id']);
+            $entry_id = (int) $getid;
+            if (!yabp_deals_entry_value_via_entry_id($entry_id, 'entry_updateinterval')) { die(__('Invalid deal', 'yabp')); }            
+            $updateinterval = trim($_POST['update_value']);            
+            if ($updateinterval == "") { die(yabp_deals_format_updateinterval(yabp_deals_entry_value_via_entry_id($entry_id, 'entry_updateinterval'))); }            
+            $updateinterval_formated = yabp_deals_format_updateinterval($updateinterval, true);            
+            
+            $oldvalue = yabp_deals_entry_value_via_entry_id($entry_id, 'entry_updateinterval');
+            $wpdb->query("UPDATE `".$table_name_yabp_deals."` SET entry_updateinterval = '".esc_sql($updateinterval_formated)."' WHERE entry_id = '".esc_sql($entry_id)."'");
+            
+            //obsolete
+            //if (yabp_cron_updateinterval_check_number($oldvalue) < 1) { yabp_cron_handle_eventstatus($oldvalue, false); }
+            //elseif (yabp_cron_updateinterval_check_number($updateinterval_formated) == 1) { yabp_cron_handle_eventstatus($updateinterval_formated, true); }
+            die(trim($updateinterval));
+        }    
+        elseif (isset($_GET['page']) && $_GET['page'] == "yabp-deals" && isset($_GET['action']) && $_GET['action'] == 'editdealsitembuttontype') {
+            $getid = str_replace("button_type-","",$_POST['element_id']);
+            $entry_id = (int) $getid;
+            if (!yabp_deals_entry_value_via_entry_id($entry_id, 'entry_updateinterval')) { die(__('Invalid deal', 'yabp')); }            
+            $buttontype = trim($_POST['update_value']);            
+            if ($buttontype == "") { die(yabp_format_buttontype(yabp_deals_entry_value_via_entry_id($entry_id, 'entry_buttontype'))); }            
+            $buttontype_formated = yabp_format_buttontype($buttontype, true);                        
+            $wpdb->query("UPDATE `".$table_name_yabp_deals."` SET entry_buttontype = '".esc_sql($buttontype_formated)."' WHERE entry_id = '".esc_sql($entry_id)."'");
+            die(trim($buttontype));
+        }    
+    }
+}
+
+add_action('init', 'yabp_deals_init');
+
 add_shortcode('yabp', 'yabp_item_shortcode_execute');
 
 function yabp_item_shortcode_execute($atts, $content = '') {    
@@ -1298,59 +1836,59 @@ function yabp_item_shortcode_execute($atts, $content = '') {
     if (isset($atts['subid'])) { $subid = urlencode($atts['subid']); }
     else { $subid = false; }
     
-    if (!yabp_entry_updateinterval_via_entry_id($entry_id)) { $output = ''; }
+    if (!yabp_entry_value_via_entry_id($entry_id, 'entry_updateinterval')) { $output = ''; }
     else {
         $output = '<div class="yabp_item_wrapper">';    
         $title = yabp_item_value_via_column_name($entry_id,'item_title');
     
-        if (yabp_entry_showthumb_via_entry_id($entry_id)) { 
-            $thumburl = yabp_item_value_via_column_name($entry_id,yabp_entry_thumbsize_via_entry_id($entry_id, true));
-            $output .= '<div class="yabp_item_img'.(yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"><img alt="'.$title.'" title="'.$title.'" src="'.$thumburl.'" /></div>';
+        if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')) { 
+            $thumburl = yabp_item_value_via_column_name($entry_id,yabp_entry_value_via_entry_id($entry_id, 'entry_thumb', true));
+            $output .= '<div class="yabp_item_img'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"><img alt="'.$title.'" title="'.$title.'" src="'.$thumburl.'" /></div>';
         }
-        $output .= '<div class="yabp_item_info_left'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'">';    
+        $output .= '<div class="yabp_item_info_left'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'">';    
     
-        if (yabp_entry_showtitle_via_entry_id($entry_id)) {
-            $output .= '<span class="yabp_item_title'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_title_fontsize')||get_option('yabp_styling_item_title_fontcolour')?' style="'.(get_option('yabp_styling_item_title_fontsize')?'font-size: '.get_option('yabp_styling_item_title_fontsize').'px;':'').(get_option('yabp_styling_item_title_fontcolour')?'color: #'.get_option('yabp_styling_item_title_fontcolour').';':'').'"':'').'>'.$title.'</span>';
+        if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showtitle')) {
+            $output .= '<span class="yabp_item_title'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_title_fontsize')||get_option('yabp_styling_item_title_fontcolour')?' style="'.(get_option('yabp_styling_item_title_fontsize')?'font-size: '.get_option('yabp_styling_item_title_fontsize').'px;':'').(get_option('yabp_styling_item_title_fontcolour')?'color: #'.get_option('yabp_styling_item_title_fontcolour').';':'').'"':'').'>'.$title.'</span>';
         }
-        if (yabp_entry_showsubtitle_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_subtitle') != "") {
+        if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showsubtitle') && yabp_item_value_via_column_name($entry_id,'item_subtitle') != "") {
             $subtitle = yabp_item_value_via_column_name($entry_id,'item_subtitle');
-            $output .= '<br /><span class="yabp_item_subtitle'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_subtitle_fontsize')||get_option('yabp_styling_item_subtitle_fontcolour')?' style="'.(get_option('yabp_styling_item_subtitle_fontsize')?'font-size: '.get_option('yabp_styling_item_subtitle_fontsize').'px;':'').(get_option('yabp_styling_item_subtitle_fontcolour')?'color: #'.get_option('yabp_styling_item_subtitle_fontcolour').';':'').'"':'').'>'.$subtitle.'</span>';
+            $output .= '<br /><span class="yabp_item_subtitle'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_subtitle_fontsize')||get_option('yabp_styling_item_subtitle_fontcolour')?' style="'.(get_option('yabp_styling_item_subtitle_fontsize')?'font-size: '.get_option('yabp_styling_item_subtitle_fontsize').'px;':'').(get_option('yabp_styling_item_subtitle_fontcolour')?'color: #'.get_option('yabp_styling_item_subtitle_fontcolour').';':'').'"':'').'>'.$subtitle.'</span>';
         }
 
-        if (yabp_entry_showrating_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_rating') != 0) {
+        if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showrating') && yabp_item_value_via_column_name($entry_id,'item_rating') != 0) {
             $ratingspan = yabp_item_value_via_column_name($entry_id,'item_ratingspan');
             if (empty($ratingspan)) { $ratingspan = __('Not rated yet', 'yabp'); }
-            $output .= '<br /><span class="yabp_item_rating'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'">'.$ratingspan.'</span>';
+            $output .= '<br /><span class="yabp_item_rating'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'">'.$ratingspan.'</span>';
         }
 
-        if (yabp_entry_showprice_via_entry_id($entry_id)) {
+        if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showprice')) {
             $price = yabp_format_price(yabp_item_value_via_column_name($entry_id,'item_price'));
             if (yabp_item_value_via_column_name($entry_id,'item_price') > 0) {            
-                if (yabp_entry_showlistprice_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_listprice') > 0) {
+                if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showlistprice') && yabp_item_value_via_column_name($entry_id,'item_listprice') > 0) {
                     $listprice = yabp_format_price(yabp_item_value_via_column_name($entry_id,'item_listprice'));
             
-                    $output .= '<br /><span class="yabp_item_listprice'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_listprice_fontsize')||get_option('yabp_styling_item_listprice_fontcolour')?' style="'.(get_option('yabp_styling_item_listprice_fontsize')?'font-size: '.get_option('yabp_styling_item_listprice_fontsize').'px;':'').(get_option('yabp_styling_item_listprice_fontcolour')?'color: #'.get_option('yabp_styling_item_listprice_fontcolour').';':'').'"':'').'>'.$listprice.'</span>';
-                    $output .= '<span class="yabp_item_price'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';        
+                    $output .= '<br /><span class="yabp_item_listprice'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_listprice_fontsize')||get_option('yabp_styling_item_listprice_fontcolour')?' style="'.(get_option('yabp_styling_item_listprice_fontsize')?'font-size: '.get_option('yabp_styling_item_listprice_fontsize').'px;':'').(get_option('yabp_styling_item_listprice_fontcolour')?'color: #'.get_option('yabp_styling_item_listprice_fontcolour').';':'').'"':'').'>'.$listprice.'</span>';
+                    $output .= '<span class="yabp_item_price'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';        
                 }
                 else {
-                    $output .= '<br /><span class="yabp_item_price'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';
+                    $output .= '<br /><span class="yabp_item_price'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';
                 }
             }
         }
-        if (yabp_entry_showavailability_via_entry_id($entry_id)) {
+        if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showavailability')) {
             $availability = yabp_item_value_via_column_name($entry_id,'item_availability');
             if (empty($availability)) { $availability = __('Possibly not available', 'yabp'); }            
-            $output .= '<br /><span class="yabp_item_availability'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_availability_fontsize')||get_option('yabp_styling_item_availability_fontcolour')?' style="'.(get_option('yabp_styling_item_availability_fontsize')?'font-size: '.get_option('yabp_styling_item_availability_fontsize').'px;':'').(get_option('yabp_styling_item_availability_fontcolour')?'color: #'.get_option('yabp_styling_item_availability_fontcolour').';':'').'"':'').'>'.$availability.'</span>';
+            $output .= '<br /><span class="yabp_item_availability'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_availability_fontsize')||get_option('yabp_styling_item_availability_fontcolour')?' style="'.(get_option('yabp_styling_item_availability_fontsize')?'font-size: '.get_option('yabp_styling_item_availability_fontsize').'px;':'').(get_option('yabp_styling_item_availability_fontcolour')?'color: #'.get_option('yabp_styling_item_availability_fontcolour').';':'').'"':'').'>'.$availability.'</span>';
         }
 
-        if (yabp_entry_showfreeshipping_via_entry_id($entry_id) && yabp_item_value_via_column_name($entry_id,'item_price') >= $yabp_item_freeshipping_limit) {
+        if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showfreeshipping') && yabp_item_value_via_column_name($entry_id,'item_price') >= $yabp_item_freeshipping_limit) {
             $freeshipping_text = get_option('yabp_item_freeshipping_text');            
-            $output .= '<br /><span class="yabp_item_freeshipping'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_freeshipping_fontsize')||get_option('yabp_styling_item_freeshipping_fontcolour')?' style="'.(get_option('yabp_styling_item_freeshipping_fontsize')?'font-size: '.get_option('yabp_styling_item_freeshipping_fontsize').'px;':'').(get_option('yabp_styling_item_freeshipping_fontcolour')?'color: #'.get_option('yabp_styling_item_freeshipping_fontcolour').';':'').'"':'').'>'.$freeshipping_text.'</span>';
+            $output .= '<br /><span class="yabp_item_freeshipping'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_freeshipping_fontsize')||get_option('yabp_styling_item_freeshipping_fontcolour')?' style="'.(get_option('yabp_styling_item_freeshipping_fontsize')?'font-size: '.get_option('yabp_styling_item_freeshipping_fontsize').'px;':'').(get_option('yabp_styling_item_freeshipping_fontcolour')?'color: #'.get_option('yabp_styling_item_freeshipping_fontcolour').';':'').'"':'').'>'.$freeshipping_text.'</span>';
         }
     
-        if (yabp_entry_showbutton_via_entry_id($entry_id)) {
+        if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_showbutton')) {
             $view = false;
-            $curbuttontype = (int) yabp_entry_buttontype_via_entry_id($entry_id);
+            $curbuttontype = (int) yabp_entry_value_via_entry_id($entry_id, 'entry_buttontype');
             switch ($curbuttontype) {            
                 case 1:
                     $view = true; $buttonurl = $yabp_bolcom_view_button; break;
@@ -1361,13 +1899,100 @@ function yabp_item_shortcode_execute($atts, $content = '') {
                 case 4:
                     $buttonurl = $yabp_bolcom_buy_button_alt; break;
             }    
-            $output .= '<br /><span class="yabp_item_button'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"><a href="'.(yabp_entry_putincart_via_entry_id($entry_id)==1?$yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=BTN&amp;url=".urlencode($yabp_bolcom_putincart_link).yabp_entry_bolid_via_entry_id($entry_id)."&amp;name=".urlencode(strtolower(yabp_item_title_via_entry_id($entry_id))):str_replace("&amp;f=TXL", "&amp;f=BTN", yabp_item_value_via_column_name($entry_id,'item_afflink'))).($subid?'&amp;subid='.$subid:'').'" rel="nofollow'.(yabp_entry_openinnewtab_via_entry_id($entry_id)==1?" external":"").'"><img alt="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" title="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" src="'.$buttonurl.'" /></a></span>';
+            $output .= '<br /><span class="yabp_item_button'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"><a href="'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_putincart')==1?$yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=BTN&amp;url=".urlencode($yabp_bolcom_putincart_link).yabp_entry_value_via_entry_id($entry_id, 'entry_bolid')."&amp;name=".urlencode(strtolower(yabp_item_title_via_entry_id($entry_id))):str_replace("&amp;f=TXL", "&amp;f=BTN", yabp_item_value_via_column_name($entry_id,'item_afflink'))).($subid?'&amp;subid='.$subid:'').'" rel="nofollow'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_openinnewtab')==1?" external":"").'"><img alt="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" title="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" src="'.$buttonurl.'" /></a></span>';
         
-            if (yabp_entry_recordimpressions_via_entry_id($entry_id) == 1) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=BTN&amp;name='.urlencode(yabp_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
+            if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_recordimpressions')) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=BTN&amp;name='.urlencode(yabp_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
         }
         else {
-            $output .= '<br /><span class="yabp_item_textlink'.(yabp_entry_showthumb_via_entry_id($entry_id)==1&&yabp_entry_imgontop_via_entry_id($entry_id)==1?"_imgontop":"").'"><a href="'.(yabp_entry_putincart_via_entry_id($entry_id)==1?$yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=TXL&amp;url=".urlencode($yabp_bolcom_putincart_link).yabp_entry_bolid_via_entry_id($entry_id)."&amp;name=".urlencode(strtolower(yabp_item_title_via_entry_id($entry_id))):yabp_item_value_via_column_name($entry_id,'item_afflink')).($subid?"&amp;subid=".$subid:"").'" rel="nofollow'.(yabp_entry_openinnewtab_via_entry_id($entry_id)==1?" external":"").'"><span'.(get_option('yabp_styling_item_textlink_fontsize')||get_option('yabp_styling_item_textlink_fontcolour')?' style="'.(get_option('yabp_styling_item_textlink_fontsize')?'font-size: '.get_option('yabp_styling_item_textlink_fontsize').'px;':'').(get_option('yabp_styling_item_textlink_fontcolour')?'color: #'.get_option('yabp_styling_item_textlink_fontcolour').';':'').'"':'').'>'.get_option('yabp_item_textlink_text').'</span></a></span>';
-            if (yabp_entry_recordimpressions_via_entry_id($entry_id) == 1) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=TXL&amp;name='.urlencode(yabp_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
+            $output .= '<br /><span class="yabp_item_textlink'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"><a href="'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_putincart')==1?$yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=TXL&amp;url=".urlencode($yabp_bolcom_putincart_link).yabp_entry_value_via_entry_id($entry_id, 'entry_bolid')."&amp;name=".urlencode(strtolower(yabp_item_title_via_entry_id($entry_id))):yabp_item_value_via_column_name($entry_id,'item_afflink')).($subid?"&amp;subid=".$subid:"").'" rel="nofollow'.(yabp_entry_boolean_via_entry_id($entry_id, 'entry_openinnewtab')==1?" external":"").'"><span'.(get_option('yabp_styling_item_textlink_fontsize')||get_option('yabp_styling_item_textlink_fontcolour')?' style="'.(get_option('yabp_styling_item_textlink_fontsize')?'font-size: '.get_option('yabp_styling_item_textlink_fontsize').'px;':'').(get_option('yabp_styling_item_textlink_fontcolour')?'color: #'.get_option('yabp_styling_item_textlink_fontcolour').';':'').'"':'').'>'.get_option('yabp_item_textlink_text').'</span></a></span>';
+            if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_recordimpressions')) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=TXL&amp;name='.urlencode(yabp_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
+        }    
+        $output .= "</div></div>";
+    }
+    return $output;
+}
+
+add_shortcode('yabp-deal', 'yabp_deals_shortcode_execute');
+
+function yabp_deals_shortcode_execute($atts, $content = '') {    
+    global $wpdb, $table_name_yabp_items, $yabp_bolcom_buy_button, $yabp_bolcom_buy_button_alt, $yabp_bolcom_view_button, $yabp_bolcom_view_button_alt, $yabp_impression_imglink_prefix, $yabp_partnerlink_prefix, $yabp_bolcom_putincart_link, $yabp_item_freeshipping_limit, $yabp_deals_countdown_template;
+    $entry_id = $atts[0];
+    
+    if (isset($atts['subid'])) { $subid = urlencode($atts['subid']); }
+    else { $subid = false; }
+    
+    if (!yabp_deals_entry_value_via_entry_id($entry_id, 'entry_updateinterval')) { $output = ''; }    
+    elseif (yabp_deals_item_value_via_column_name($entry_id,'item_title') == -1 && get_option('yabp_deal_expired_option') == 2) { $output = ''; }
+    elseif (yabp_deals_item_value_via_column_name($entry_id,'item_title') == -1 && get_option('yabp_deal_expired_option') == 1) {
+        $random_id = (int) $wpdb->get_var("SELECT entry_id FROM `".$table_name_yabp_items."` ORDER BY RAND() LIMIT 1");        
+        if ($random_id == 0) { $output = ''; }
+        else { return do_shortcode('[yabp '.$random_id.($subid?' subid="'.$subid.'"':'').']'); }
+    }
+    else {
+        $output = '<div class="yabp_deals_wrapper">';    
+        $title = yabp_deals_item_value_via_column_name($entry_id,'item_title');
+    
+        if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')) { 
+            $thumburl = yabp_deals_item_value_via_column_name($entry_id,'item_thumb');
+            $output .= '<div class="yabp_deals_img'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"><img alt="'.$title.'" title="'.$title.'" src="'.$thumburl.'" /></div>';
+        }
+        $output .= '<div class="yabp_deals_info_left'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'">';    
+    
+        if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showtitle')) {
+            $output .= '<span class="yabp_deals_title'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_title_fontsize')||get_option('yabp_styling_item_title_fontcolour')?' style="'.(get_option('yabp_styling_item_title_fontsize')?'font-size: '.get_option('yabp_styling_item_title_fontsize').'px;':'').(get_option('yabp_styling_item_title_fontcolour')?'color: #'.get_option('yabp_styling_item_title_fontcolour').';':'').'"':'').'>'.$title.'</span>';
+        }
+        
+        if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showrating') && yabp_deals_item_value_via_column_name($entry_id,'item_rating') != 0) {
+            $ratingspan = yabp_deals_item_value_via_column_name($entry_id,'item_ratingspan');
+            if (empty($ratingspan)) { $ratingspan = __('Not rated yet', 'yabp'); }
+            $output .= '<br /><span class="yabp_deals_rating'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'">'.$ratingspan.'</span>';
+        }
+
+        if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showprice')) {
+            $price = yabp_format_price(yabp_deals_item_value_via_column_name($entry_id,'item_price'));
+            if (yabp_deals_item_value_via_column_name($entry_id,'item_price') > 0) {            
+                if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showlistprice') && yabp_deals_item_value_via_column_name($entry_id,'item_listprice') > 0) {
+                    $listprice = yabp_format_price(yabp_deals_item_value_via_column_name($entry_id,'item_listprice'));
+            
+                    $output .= '<br /><span class="yabp_deals_listprice'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_listprice_fontsize')||get_option('yabp_styling_item_listprice_fontcolour')?' style="'.(get_option('yabp_styling_item_listprice_fontsize')?'font-size: '.get_option('yabp_styling_item_listprice_fontsize').'px;':'').(get_option('yabp_styling_item_listprice_fontcolour')?'color: #'.get_option('yabp_styling_item_listprice_fontcolour').';':'').'"':'').'>'.$listprice.'</span>';
+                    $output .= '<span class="yabp_deals_price'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';        
+                }
+                else {
+                    $output .= '<br /><span class="yabp_deals_price'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_price_fontsize')||get_option('yabp_styling_item_price_fontcolour')?' style="'.(get_option('yabp_styling_item_price_fontsize')?'font-size: '.get_option('yabp_styling_item_price_fontsize').'px;':'').(get_option('yabp_styling_item_price_fontcolour')?'color: #'.get_option('yabp_styling_item_price_fontcolour').';':'').'"':'').'>'.$price.'</span>';
+                }
+            }
+        }
+
+        if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showfreeshipping') && yabp_deals_item_value_via_column_name($entry_id,'item_price') >= $yabp_item_freeshipping_limit) {
+            $freeshipping_text = get_option('yabp_item_freeshipping_text');            
+            $output .= '<br /><span class="yabp_deals_freeshipping'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_freeshipping_fontsize')||get_option('yabp_styling_item_freeshipping_fontcolour')?' style="'.(get_option('yabp_styling_item_freeshipping_fontsize')?'font-size: '.get_option('yabp_styling_item_freeshipping_fontsize').'px;':'').(get_option('yabp_styling_item_freeshipping_fontcolour')?'color: #'.get_option('yabp_styling_item_freeshipping_fontcolour').';':'').'"':'').'>'.$freeshipping_text.'</span>';
+        }
+
+        if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showcountdown')) {
+            $countdowntext = (yabp_deals_countdown_format(yabp_deals_item_value_via_column_name($entry_id,'item_enddate'), time(), true)?get_option('yabp_deals_countdown_text_expired'):str_replace($yabp_deals_countdown_template, yabp_deals_countdown_format(yabp_deals_item_value_via_column_name($entry_id,'item_enddate'), time()), get_option('yabp_deals_countdown_text')));
+            $output .= '<br /><span class="yabp_deals_countdown'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"'.(get_option('yabp_styling_item_countdown_fontsize')||get_option('yabp_styling_item_countdown_fontcolour')?' style="'.(get_option('yabp_styling_item_countdown_fontsize')?'font-size: '.get_option('yabp_styling_item_countdown_fontsize').'px;':'').(get_option('yabp_styling_item_countdown_fontcolour')?'color: #'.get_option('yabp_styling_item_countdown_fontcolour').';':'').'"':'').'>'.$countdowntext.'</span>';
+        }
+    
+        if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showbutton')) {
+            $view = false;
+            $curbuttontype = (int) yabp_deals_entry_value_via_entry_id($entry_id, 'entry_buttontype');
+            switch ($curbuttontype) {            
+                case 1:
+                    $view = true; $buttonurl = $yabp_bolcom_view_button; break;
+                case 2:
+                    $view = true; $buttonurl = $yabp_bolcom_view_button_alt; break;
+                case 3:
+                    $buttonurl = $yabp_bolcom_buy_button; break;
+                case 4:
+                    $buttonurl = $yabp_bolcom_buy_button_alt; break;
+            }    
+            $output .= '<br /><span class="yabp_deals_button'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"><a href="'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_putincart')==1?$yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=BTN&amp;url=".urlencode($yabp_bolcom_putincart_link).yabp_deals_item_value_via_column_name($entry_id, 'item_bolid')."&amp;name=".urlencode(strtolower(yabp_deals_item_value_via_column_name($entry_id,'item_title'))):str_replace("&amp;f=TXL", "&amp;f=BTN", yabp_deals_item_value_via_column_name($entry_id,'item_afflink'))).($subid?'&amp;subid='.$subid:'').'" rel="nofollow'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_openinnewtab')==1?" external":"").'"><img alt="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" title="'.($view?__('Click to view this product at bol.com', 'yabp'):__('Click to buy this product at bol.com', 'yabp')).'" src="'.$buttonurl.'" /></a></span>';
+        
+            if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_recordimpressions')) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=BTN&amp;name='.urlencode(yabp_deals_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
+        }
+        else {
+            $output .= '<br /><span class="yabp_deals_textlink'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_showthumb')==1&&yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_imgontop')==1?"_imgontop":"").'"><a href="'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_putincart')==1?$yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=TXL&amp;url=".urlencode($yabp_bolcom_putincart_link).yabp_deals_item_value_via_column_name($entry_id, 'item_bolid')."&amp;name=".urlencode(strtolower(yabp_deals_item_value_via_column_name($entry_id,'item_title'))):yabp_deals_item_value_via_column_name($entry_id,'item_afflink')).($subid?"&amp;subid=".$subid:"").'" rel="nofollow'.(yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_openinnewtab')==1?" external":"").'"><span'.(get_option('yabp_styling_item_textlink_fontsize')||get_option('yabp_styling_item_textlink_fontcolour')?' style="'.(get_option('yabp_styling_item_textlink_fontsize')?'font-size: '.get_option('yabp_styling_item_textlink_fontsize').'px;':'').(get_option('yabp_styling_item_textlink_fontcolour')?'color: #'.get_option('yabp_styling_item_textlink_fontcolour').';':'').'"':'').'>'.get_option('yabp_item_textlink_text').'</span></a></span>';
+            if (yabp_deals_entry_boolean_via_entry_id($entry_id, 'entry_recordimpressions')) { $output .= '<img src="'.$yabp_impression_imglink_prefix.get_option('yabp_siteid').'&amp;t=url&amp;f=TXL&amp;name='.urlencode(yabp_deals_item_value_via_column_name($entry_id,'item_title')).'" width="1" height="1" />'; }
         }    
         $output .= "</div></div>";
     }
@@ -1384,12 +2009,9 @@ function yabp_register_styles_scripts() {
     wp_enqueue_script('yabp');
 }
 
-function yabp_register_adminscripts_styles() { 
-    wp_enqueue_script('yabp_jscolor', plugin_dir_url(__FILE__).'js/jscolor/jscolor.js'); 
-}
-function yabp_register_adminscripts_styles_action() { 
-    add_action('admin_enqueue_scripts', 'yabp_register_adminscripts_styles'); 
-}
+function yabp_register_adminscripts_styles() { wp_enqueue_script('yabp_jscolor', plugin_dir_url(__FILE__).'js/jscolor/jscolor.js'); }
+
+function yabp_register_adminscripts_styles_action() { add_action('admin_enqueue_scripts', 'yabp_register_adminscripts_styles'); }
 
 function yabp_cron_handle_eventstatus($interval, $action) {
     global $yabp_cron_defaulttime;
@@ -1444,12 +2066,38 @@ function yabp_cron_event_daily_do() {
     }    
 }
 
+function yabp_deals_cron_handle_eventstatus($action) {
+    global $yabp_cron_deals_defaulttime;
+    if ($action == true) {
+        if (!wp_next_scheduled('yabp_deals_cron_event_daily')) {
+            $crontime = strtotime(date("Y-m-d")." ".$yabp_cron_deals_defaulttime);
+            wp_schedule_event($crontime, 'daily', 'yabp_deals_cron_event_daily');
+            return true;
+        }
+        else { return false; }          
+    }
+    elseif ($action == false) {
+        if (wp_next_scheduled('yabp_deals_cron_event_daily')) {
+            wp_clear_scheduled_hook('yabp_deals_cron_event_daily');
+            return true;
+        }
+        else { return false; }                        
+    }
+}
+
+add_action('yabp_deals_cron_event_daily', 'yabp_deals_cron_event_daily_do');
+
+function yabp_deals_cron_event_daily_do() {
+    yabp_deals_update();
+}
+
 register_deactivation_hook(__FILE__, 'yabp_cron_handle_deactivate');
 
 function yabp_cron_handle_deactivate() {
     wp_clear_scheduled_hook('yabp_cron_event_hourly');
     wp_clear_scheduled_hook('yabp_cron_event_twicedaily');
     wp_clear_scheduled_hook('yabp_cron_event_daily');
+    wp_clear_scheduled_hook('yabp_deals_cron_event_daily');
 }
   
 ?>

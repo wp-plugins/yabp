@@ -1,14 +1,14 @@
 === Yet Another bol.com Plugin ===
 Contributors: Mitchel Troost
 Donate link: http://tromit.nl/diensten/wordpress-plugins/
-Tags: bol.com, affiliate, responsive, cronjob, post, page, shortcode
+Tags: bol.com, deals, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
 Tested up to: 4.1
-Stable tag: 1.0.8
+Stable tag: 1.1
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-A powerful plugin to easily integrate bol.com products in your blog posts or at your pages to earn money with the bol.com Partner Program.
+A powerful plugin to easily integrate bol.com products and deals in your blog posts or at your pages to earn money with the bol.com Partner Program.
 
 == Description ==
 
@@ -16,10 +16,13 @@ The next generation bol.com plugin for WordPress is here. This powerful plugin i
 
 Displaying bol.com products in blog posts and on pages is nothing new. Therefore this plugin takes this to the next level. The product data as price, delivery time and rating are updated automatically at a selected interval. Its display and style can be highly customized. You can choose to show the (new) buttons of the Partner Program, and you can choose to record the impressions of your products on your website in the Program. And last but not least, the display of products is designed to be integrated in desktop, mobile and responsive themes.
 
+From version 1.1, you are able to display bol.com deals in your blogs posts and at your pages. You add the desired categories to the database, retrieve their shortcodes, and put them anywhere on your website to display deals in the same way as the bol.com products.
+
 = Features =
 
 * Easily display bol.com products anywhere in blog posts or at pages
-* User-friendly process to add products to your database from the Catalog
+* NEW: Easily display automatically updated bol.com deals
+* User-friendly process to add products and deals to your database from the Catalog
 * Search for products in either the Dutch or the Belgium Catalog
 * Prices, delivery times and ratings are automatically updated
 * Highly customizable layout, and you can choose between product links and the new bol.com buttons
@@ -88,6 +91,10 @@ Yes, you can by adding 'subid=your sub id' to your shortcodes. For example: [yab
 
 Currently, bol.com only allows you to put products directly in the cart bol.com sells and ships themselves. Meaning, products from third party sellers cannot be put directly in the bol.com Cart at the moment. As an alternative, if bol.com does have the product included in its own catalog, it puts this product in the cart. This product may have a different delivery time and/or price than the product from the third party seller.
 
+= Why am I unable to select or display a deal (or deal category) using this plugin that is shown at bol.com as a day or week deal? =
+
+The available deals and deal categories depend on the offers at bol.com. The feed used from the Partner Program is rather unreliable and is subject to changes. If there is any problem with the number of available deals, please contact the developer.
+
 == Screenshots ==
 
 1. Products displayed on a page
@@ -97,6 +104,12 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 5. Product list of the plugin
 
 == Changelog ==
+
+= 1.1 =
+* Added the ability to display deals from bol.com in your posts or at your pages
+* Fixed the option to display of the thumbnail above the content
+* Fixed minor bugs
+* Applied major code cleanups
 
 = 1.0.8 =
 * Added the possibility to search for products in the Belgium product catalog
@@ -140,6 +153,9 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.1 =
+Added the ability to display deals from bol.com
 
 = 1.0.8 =
 Search for products in the Belgium product catalog and show text when a product is shipped for free.
