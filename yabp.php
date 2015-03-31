@@ -260,7 +260,7 @@ function yabp_install(){
     if (!get_option('yabp_deals_countdown_text')) { update_option('yabp_deals_countdown_text', __($yabp_deals_countdown_text, 'yabp')); }
     if (!get_option('yabp_deals_countdown_text_expired')) { update_option('yabp_deals_countdown_text_expired', __($yabp_deals_countdown_text_expired, 'yabp')); }
     if (!get_option('yabp_deal_expired_option')) { update_option('yabp_deal_expired_option', $yabp_deal_expired_option_default); }
-    if (!get_option('yabp_productmanager_expired_products_notification_default')) { update_option('yabp_productmanager_expired_products_notification_default', $yabp_productmanager_expired_products_notification_default); }
+    if (!get_option('yabp_productmanager_expired_products_notification')) { update_option('yabp_productmanager_expired_products_notification', $yabp_productmanager_expired_products_notification_default); }
                                                          
     $intervals = array(1, 2, 3);
     foreach ($intervals as $interv) {
