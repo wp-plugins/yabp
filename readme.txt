@@ -3,8 +3,8 @@ Contributors: Mitchel Troost
 Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, deals, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
-Tested up to: 4.1
-Stable tag: 1.1
+Tested up to: 4.1.1
+Stable tag: 1.2
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,15 +16,16 @@ The next generation bol.com plugin for WordPress is here. This powerful plugin i
 
 Displaying bol.com products in blog posts and on pages is nothing new. Therefore this plugin takes this to the next level. The product data as price, delivery time and rating are updated automatically at a selected interval. Its display and style can be highly customized. You can choose to show the (new) buttons of the Partner Program, and you can choose to record the impressions of your products on your website in the Program. And last but not least, the display of products is designed to be integrated in desktop, mobile and responsive themes.
 
-From version 1.1, you are able to display bol.com deals in your blogs posts and at your pages. You add the desired categories to the database, retrieve their shortcodes, and put them anywhere on your website to display deals in the same way as the bol.com products.
+From version 1.1, you are able to display bol.com deals in your blogs posts and at your pages. You can add the desired categories to the database, retrieve their shortcodes, and put them anywhere on your website to display deals in the same way as the bol.com products.
 
 = Features =
 
 * Easily display bol.com products anywhere in blog posts or at pages
-* NEW: Easily display automatically updated bol.com deals
+* Easily display automatically updated bol.com deals
 * User-friendly process to add products and deals to your database from the Catalog
 * Search for products in either the Dutch or the Belgium Catalog
 * Prices, delivery times and ratings are automatically updated
+* NEW: receive email notifications when a product expires from the Catalog
 * Highly customizable layout, and you can choose between product links and the new bol.com buttons
 * Choose products have to be opened in a new tab and/or be put directly in the bol.com Cart
 * Support for use in desktop, mobile and responsive themes
@@ -95,6 +96,10 @@ Currently, bol.com only allows you to put products directly in the cart bol.com 
 
 The available deals and deal categories depend on the offers at bol.com. The feed used from the Partner Program is rather unreliable and is subject to changes. If there is any problem with the number of available deals, please contact the developer.
 
+= Why are the email notifications not working? =
+
+First check if you switched the email notifications to 'on'. Then try to send a test notification, and check the blog's set up the admin emailaddress for the test email (check your spam folder!). If you still cannot find any emails, you may contact the developer to troubleshoot.
+
 == Screenshots ==
 
 1. Products displayed on a page
@@ -105,9 +110,15 @@ The available deals and deal categories depend on the offers at bol.com. The fee
 
 == Changelog ==
 
+= 1.2 =
+* Added product manager for expired products
+* Added the ability to receive email notifications when a product expires from the Catalog
+* Updated deals categories
+* Updated Dutch translation
+
 = 1.1 =
 * Added the ability to display deals from bol.com in your posts or at your pages
-* Fixed the option to display of the thumbnail above the content
+* Fixed the option to display the thumbnail above the content
 * Fixed minor bugs
 * Applied major code cleanups
 
@@ -153,6 +164,9 @@ The available deals and deal categories depend on the offers at bol.com. The fee
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.2 =
+Added product manager for expired products
 
 = 1.1 =
 Added the ability to display deals from bol.com

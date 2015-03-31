@@ -3,7 +3,7 @@
     Plugin Name: Yet Another bol.com Plugin
     Plugin URI: http://tromit.nl/diensten/wordpress-plugins/
     Description: A powerful plugin to easily integrate bol.com products and deals in your blog posts or at your pages to earn money with the bol.com Partner Program.
-    Version: 1.1
+    Version: 1.2
     Author: Mitchel Troost
     Author URI: http://tromit.nl/
     License: GPL2
@@ -35,7 +35,7 @@
 
 global $wpdb;
 
-$yabp_version = "1.1";
+$yabp_version = "1.2";
 $table_name_yabp = $wpdb->prefix . 'yabp';
 $table_name_yabp_items = $wpdb->prefix . 'yabp_items';
 $table_name_yabp_deals = $wpdb->prefix . 'yabp_deals';
@@ -57,9 +57,11 @@ $yabp_add_item_item_count = 10;
 $yabp_add_item_item_count_limit = 50;
 $yabp_itemlist_count = 10;
 $yabp_dealslist_count = 10;
+$yabp_productmanager_count = 10;
+$yabp_productmanager_expired_products_notification_default = 1;
 $yabp_deals_daydeals_keywords = array(1, 'dagdeal_nlebooks');
 $yabp_deals_daydeals_keywords_strings = array('Global daily deal', 'Dutch ebooks daily deal');
-$yabp_deals_keywords = array('sha', 'm&g', 'computer', 'software', 'kth', 'sce', 't&k', 'mob', 'ava', 'baby', 'games', 'nav', 'mda', 'dier', 'sda', 'mobile', 'ukusbooks', 'netwerk', 'hnt', 'speelgoed', 'sto', 'wonen', 'ukusebook', 'dataop', 'muziek', 'elektronica', 'dvd', 'nlebooks', 'nlbooks', 'tuin', 'bpk', 'audio');
+$yabp_deals_keywords = array('sha', 'm&g', 'computer', 'software', 'kth', 'sce', 'tk', 'mob', 'ava', 'baby', 'games', 'nav', 'mda', 'dier', 'sda', 'mobile', 'ukusbook', 'netwerk', 'hnt', 'speelgoed', 'sto', 'wonen', 'ukusebook', 'dataop', 'muziek', 'elektronica', 'dvd', 'nlebooks', 'nlbooks', 'tuin', 'bpk', 'audio');
 $yabp_deals_keywords_strings = array('Jewelry, Watches and Bracelets', 'Beauty and Health', 'Computer', 'Software', 'Kitchen, Dining and Household', 'Tv, Camera and Audio', 'Garden and DIY', 'Mobile telephones', 'Music and Movie', 'Baby', 'Games', 'Navigation', 'Major appliance', 'Animals', 'Household appliances', 'Mobile', 'English books', 'Network', 'Home cinema', 'Toys', 'Sports and Free time', 'Living', 'English eBooks', 'Data storage', 'Music', 'Electronics', 'DVD', 'Dutch eBooks', 'Dutch books', 'Garden', 'Baby and Child', 'Audio');
 $yabp_deal_expired_option_default = 1;
 $yabp_styling_item_fontsize_lowlimit = 5;
@@ -80,9 +82,14 @@ $api_port = '443';
 
 function yabp_I18n() { load_plugin_textdomain( 'yabp', false, dirname(plugin_basename( __FILE__ )) . '/lang/'); }
 
-function yabp_menu() {    
+function yabp_menu() {        
+    $exp_items_count = yabp_expired_items_count();
+    $exp_items_title = esc_attr(sprintf('%d expired product(s)', $exp_items_count));
+    $exp_items_menu_label_options = sprintf(__('YAbP %s', 'yabp'), "<span class='update-plugins count-".$exp_items_count."' title='".$exp_items_title."'><span class='update-count'>".number_format_i18n($exp_items_count)."</span></span>" );        
+    $exp_items_menu_label_productmanager = sprintf(__('Product manager %s', 'yabp'), "<span class='update-plugins count-".$exp_items_count."' title='".$exp_items_title."'><span class='update-count'>".number_format_i18n($exp_items_count)."</span></span>" );        
+    
     if(function_exists('add_menu_page')){
-        add_menu_page(__('Options', 'yabp'), 'YAbP', 'manage_options', 'yabp', 'yabp_options');
+        add_menu_page(__('Options', 'yabp'), $exp_items_menu_label_options, 'manage_options', 'yabp', 'yabp_options');
     }
     if(function_exists('add_submenu_page')){
         $yabp_optionspage = add_submenu_page('yabp', __('Options', 'yabp'), __('Options', 'yabp'), 'manage_options', 'yabp', 'yabp_options');
@@ -93,6 +100,9 @@ function yabp_menu() {
     }
     if(function_exists('add_submenu_page')){
         add_submenu_page('yabp', __('Product list', 'yabp'), __('Product list', 'yabp'), 'manage_options', 'yabp-itemlist', 'yabp_itemlist');
+    }
+    if(function_exists('add_submenu_page')){        
+        add_submenu_page('yabp', __('Product manager', 'yabp'), $exp_items_menu_label_productmanager, 'manage_options', 'yabp-productmanager', 'yabp_productmanager');
     }
     if(function_exists('add_submenu_page')){
         add_submenu_page('yabp', __('Deals', 'yabp'), __('Deals', 'yabp'), 'manage_options', 'yabp-deals', 'yabp_deals');
@@ -111,7 +121,7 @@ function yabp_init(){
 }
 
 function yabp_install(){
-    global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_version, $yabp_add_item_item_count, $yabp_itemlist_count, $yabp_item_textlink_text, $yabp_item_freeshipping_text, $yabp_add_item_item_defaultcountry, $table_name_yabp_deals, $table_name_yabp_deals_items, $yabp_deals_updateinterval_default, $yabp_deals_countdown_text, $yabp_dealslist_count, $yabp_deals_countdown_text_expired, $yabp_deal_expired_option_default;
+    global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_version, $yabp_add_item_item_count, $yabp_itemlist_count, $yabp_item_textlink_text, $yabp_item_freeshipping_text, $yabp_add_item_item_defaultcountry, $table_name_yabp_deals, $table_name_yabp_deals_items, $yabp_deals_updateinterval_default, $yabp_deals_countdown_text, $yabp_dealslist_count, $yabp_deals_countdown_text_expired, $yabp_deal_expired_option_default, $yabp_productmanager_count, $yabp_productmanager_expired_products_notification_default;
         
     $sql = "CREATE TABLE IF NOT EXISTS ".$table_name_yabp."(
         entry_id INT auto_increment NOT NULL,
@@ -134,6 +144,7 @@ function yabp_install(){
         entry_style INT(1) NOT NULL,
         entry_imgontop INT(1) NOT NULL,
         entry_country INT(1) NOT NULL DEFAULT '1',
+        entry_expired_notification_sent INT(1) NOT NULL DEFAULT '0',
         PRIMARY KEY(entry_id)) ENGINE=MyISAM  DEFAULT CHARSET=utf8";        
         
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
@@ -211,6 +222,10 @@ function yabp_install(){
     
     update_option('yabp_version', $yabp_version);
     
+    $check_db = $wpdb->get_results("SHOW COLUMNS FROM `".$table_name_yabp."` LIKE 'entry_expired_notification_sent'");
+    if (!$check_db) {
+        $wpdb->query("ALTER TABLE `".$table_name_yabp."` ADD `entry_expired_notification_sent` INT(1) NOT NULL DEFAULT '0'");
+    }                
     $check_db = $wpdb->get_results("SHOW COLUMNS FROM `".$table_name_yabp."` LIKE 'entry_country'");
     if (!$check_db) {
         $wpdb->query("ALTER TABLE `".$table_name_yabp."` ADD `entry_country` INT(1) NOT NULL DEFAULT '1'");
@@ -236,6 +251,7 @@ function yabp_install(){
     
     if (!get_option('yabp_add_item_item_count')) { update_option('yabp_add_item_item_count', $yabp_add_item_item_count); }
     if (!get_option('yabp_itemlist_count')) { update_option('yabp_itemlist_count', $yabp_itemlist_count); }
+    if (!get_option('yabp_productmanager_count')) { update_option('yabp_productmanager_count', $yabp_productmanager_count); }
     if (!get_option('yabp_dealslist_count')) { update_option('yabp_dealslist_count', $yabp_dealslist_count); }
     if (!get_option('yabp_item_textlink_text')) { update_option('yabp_item_textlink_text', __($yabp_item_textlink_text, 'yabp')); }
     if (!get_option('yabp_item_freeshipping_text')) { update_option('yabp_item_freeshipping_text', __($yabp_item_freeshipping_text, 'yabp')); }
@@ -244,6 +260,7 @@ function yabp_install(){
     if (!get_option('yabp_deals_countdown_text')) { update_option('yabp_deals_countdown_text', __($yabp_deals_countdown_text, 'yabp')); }
     if (!get_option('yabp_deals_countdown_text_expired')) { update_option('yabp_deals_countdown_text_expired', __($yabp_deals_countdown_text_expired, 'yabp')); }
     if (!get_option('yabp_deal_expired_option')) { update_option('yabp_deal_expired_option', $yabp_deal_expired_option_default); }
+    if (!get_option('yabp_productmanager_expired_products_notification_default')) { update_option('yabp_productmanager_expired_products_notification_default', $yabp_productmanager_expired_products_notification_default); }
                                                          
     $intervals = array(1, 2, 3);
     foreach ($intervals as $interv) {
@@ -337,8 +354,39 @@ function yabp_validate_apikey($apikey) {
     }
 }
 
+function yabp_productmanager_send_expired_products_notification($test=false, $item_ids_array) {
+    global $wpdb, $table_name_yabp;
+    if ($test) {    
+        $to = get_bloginfo('admin_email');
+        $subject = "[".str_replace('http://', '', get_bloginfo('wpurl'))."] ".__('Test email notification', 'yabp');
+        $body = __('Dear admin', 'yabp').',<br /><br />'.sprintf(__('This is a test email notification for the Yet Another bol.com Plugin of your website at %s. If you can read this, the test has succeeded, meaning you are able to receive future email notifications, if set up.', 'yabp'), get_bloginfo('wpurl')).'<br /><br />'.__('Kind regards', 'yabp').',<br />Yet Another bol.com Plugin';
+        $headers = array('From: Yet Another bol.com Plugin <wordpress@'.str_replace('http://', '', get_bloginfo('wpurl')).'>', 'Content-Type: text/html; charset=UTF-8');
+        return wp_mail($to, $subject, $body, $headers);                    
+    }
+    else {
+        $expired_items_list = '<ul>';
+        foreach ($item_ids_array as $item_ids_array_current) {
+            $expired_items_list .= '<li>'.yabp_item_title_via_entry_id($item_ids_array_current).'</li>';
+        }
+        $expired_items_list .= '</ul>';
+        $to = get_bloginfo('admin_email');
+        $subject = "[".str_replace('http://', '', get_bloginfo('wpurl'))."] ".__('Expired products notification', 'yabp');
+        $body = __('Dear admin', 'yabp').',<br /><br />'.sprintf(__('Please be informed that one or more products from the Yet Another bol.com Plugin of your website at %s have been expired. See the list below:', 'yabp'), get_bloginfo('wpurl')).'<br /><br />'.$expired_items_list.'<br /><br />'.sprintf(__('<a href="%s">Click here</a> to replace the product(s).', 'yabp'), get_admin_url(null, 'admin.php?page=yabp-productmanager')).'<br /><br />'.__('Kind regards', 'yabp').',<br />Yet Another bol.com Plugin';
+        $headers = array('From: Yet Another bol.com Plugin <wordpress@'.str_replace('http://', '', get_bloginfo('wpurl')).'>', 'Content-Type: text/html; charset=UTF-8');
+        if (wp_mail($to, $subject, $body, $headers)) { 
+            return $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_expired_notification_sent = '1' WHERE entry_id IN (".implode(', ', array_map('intval', $item_ids_array)).")");
+        }        
+    }
+}
+
 function yabp_forms() {
     global $wpdb, $yabp_add_item_item_defaultcountry, $yabp_add_item_item_count, $yabp_add_item_item_count_limit, $yabp_itemlist_count, $yabp_styling_item_fontsize_lowlimit, $yabp_styling_item_fontsize_highlimit, $yabp_item_textlink_text, $yabp_item_freeshipping_text, $yabp_deals_countdown_text, $yabp_dealslist_count, $yabp_deals_countdown_text_expired, $yabp_deal_expired_option_default;
+
+    if (isset($_GET['action']) && $_GET['action'] == "yabp_productmanager_expired_products_notification_test") {         
+        yabp_productmanager_send_expired_products_notification(true);
+        wp_redirect($_SERVER['PHP_SELF'].'?page=yabp&updated=1');        
+        die('Done');
+    }
     
     if (isset($_POST['savetype']) && $_POST['savetype'] == 'saveoptions_yabp_options') {
 
@@ -375,6 +423,9 @@ function yabp_forms() {
         if (!is_numeric($_POST['yabp_deal_expired_option'])) { $_POST['yabp_deal_expired_option'] = $yabp_deal_expired_option_default; }
         else { $_POST['yabp_deal_expired_option'] = (int) $_POST['yabp_deal_expired_option']; }        
         update_option('yabp_deal_expired_option', $_POST['yabp_deal_expired_option']);    
+        
+        if (isset($_POST['yabp_productmanager_expired_products_notification'])) { update_option('yabp_productmanager_expired_products_notification', '1'); }
+        elseif (!isset($_POST['yabp_productmanager_expired_products_notification'])) { update_option('yabp_productmanager_expired_products_notification', '0'); }
 
         if (!is_numeric($_POST['yabp_styling_item_title_fontsize']) || $_POST['yabp_styling_item_title_fontsize'] < $yabp_styling_item_fontsize_lowlimit || $_POST['yabp_styling_item_title_fontsize'] > $yabp_styling_item_fontsize_highlimit) { $_POST['yabp_styling_item_title_fontsize'] = null; }
         else { $_POST['yabp_styling_item_title_fontsize'] = (int) $_POST['yabp_styling_item_title_fontsize']; }
@@ -426,7 +477,7 @@ function yabp_forms() {
 
 function yabp_options() {
     global $wpdb, $yabp_styling_item_fontsize_lowlimit, $yabp_styling_item_fontsize_highlimit, $yabp_open_api_link, $yabp_partnerprogram_link, $yabp_deals_countdown_template;
-
+    
     ?>
     <div class="wrap">
     <h2>Yet Another bol.com Plugin</h2>
@@ -450,6 +501,7 @@ function yabp_options() {
         <p><?php _e('When no deals are available from a displayed category:', 'yabp'); ?><br />
         <input type="radio" id="yabp_deal_expired_random_product" name="yabp_deal_expired_option" value="1" <?php if (get_option('yabp_deal_expired_option') == 1) { ?>checked <?php } ?>title="<?php _e('Show a random product from the database when no deals can be found for a displayed category', 'yabp'); ?>" /> <label for="yabp_deal_expired_random_product" title="<?php _e('Show a random product from the database when no deals can be found for a displayed category', 'yabp'); ?>"> <?php _e('Show a random product from the database', 'yabp'); ?></label><br />
         <input type="radio" id="yabp_deal_expired_hide" name="yabp_deal_expired_option" value="2" <?php if (get_option('yabp_deal_expired_option') == 2) { ?>checked <?php } ?>title="<?php _e('Hide the deal completely when no deals can be found for a displayed category', 'yabp'); ?>" /> <label for="yabp_deal_expired_hide" title="<?php _e('Hide the deal completely when no deals can be found for a displayed category', 'yabp'); ?>"> <?php _e('Hide the deal', 'yabp'); ?></label></p>
+        <p><a name="yabp_productmanager_expired_products_notification"></a><input type="checkbox" id="yabp_productmanager_expired_products_notification" name="yabp_productmanager_expired_products_notification" <?php if (get_option('yabp_productmanager_expired_products_notification') == 1) { ?>checked <?php } ?>title="<?php _e('Send an email notification to the admin\'s emailaddress when a product expires', 'yabp'); ?>" /> <label for="yabp_productmanager_expired_products_notification" title="<?php _e('Send an email notification to the admin\'s emailaddress when a product expires', 'yabp'); ?>"> <?php _e('Send an email notification when a product expires.', 'yabp'); ?></label> (<a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp&amp;action=yabp_productmanager_expired_products_notification_test"; ?>" title="<?php _e('To ensure you are able to receive email notifications, you can test this function by clicking on this link. Check your spam folder if you did not receive any email.', 'yabp'); ?>"><?php _e('Click here to send a test email', 'yabp'); ?></a>)</p>
         <p>&nbsp;</p>
         <p><strong><?php _e('Styling' , 'yabp'); ?></strong></p>
         <p style="font-style: italic;"><?php _e('The use of styling is optional. By default, the plugin uses the style from your current theme. When inserting font sizes and font colours below, you override the default style. The font size is the number in pixels, and the colours in hex code (eg. FF0000). You can pick hex codes by clicking on the input field. To delete a hex code, backspace it in its field. Don\'t forget to save!', 'yabp'); ?></p>
@@ -620,11 +672,14 @@ function yabp_entry_value_via_entry_id($entry_id, $column, $formatted=false) {
     else { return false; }
 }
 
-function yabp_entry_boolean_via_entry_id($entry_id, $column) {
+function yabp_entry_boolean_via_entry_id($entry_id, $column, $returnvalue=false) {
     global $wpdb, $table_name_yabp;
-    if (isset($entry_id) && is_numeric($entry_id) && isset($column) && ($column == 'entry_showthumb' || $column == 'entry_showprice' || $column == 'entry_showlistprice' || $column == 'entry_showtitle' ||  $column == 'entry_showsubtitle' || $column == 'entry_showavailability' || $column == 'entry_showrating' || $column == 'entry_showbutton' || $column == 'entry_putincart' || $column == 'entry_recordimpressions' || $column == 'entry_openinnewtab' || $column == 'entry_imgontop' || $column == 'entry_showfreeshipping')) {
-        if ($wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
-        else { return false; }                            
+    if (isset($entry_id) && is_numeric($entry_id) && isset($column) && ($column == 'entry_showthumb' || $column == 'entry_showprice' || $column == 'entry_showlistprice' || $column == 'entry_showtitle' ||  $column == 'entry_showsubtitle' || $column == 'entry_showavailability' || $column == 'entry_showrating' || $column == 'entry_showbutton' || $column == 'entry_putincart' || $column == 'entry_recordimpressions' || $column == 'entry_openinnewtab' || $column == 'entry_imgontop' || $column == 'entry_showfreeshipping' || $column == 'entry_expired_notification_sent')) {
+        if ($returnvalue) { return $wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'"); }
+        else {
+            if ($wpdb->get_var("SELECT ".esc_sql($column)." FROM `".$table_name_yabp."` WHERE entry_id = '".esc_sql($entry_id)."'") == 1) { return true; }
+            else { return false; }                            
+        }
     }
     else { return false; }
 }
@@ -678,7 +733,7 @@ function yabp_deals_item_value_via_column_name($entry_id, $column_name) {
 }
 
 function yabp_item_update_via_entry_id($entry_id) {
-    global $wpdb, $table_name_yabp_items, $yabp_partnerlink_prefix, $yabp_add_item_item_defaultcountry;
+    global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_partnerlink_prefix, $yabp_add_item_item_defaultcountry;
     
     if (isset($entry_id) && is_numeric($entry_id)) { 
 
@@ -737,10 +792,13 @@ function yabp_item_update_via_entry_id($entry_id) {
         $item_afflink = $yabp_partnerlink_prefix.get_option('yabp_siteid')."&amp;f=TXL&amp;url=".urlencode($item_externalurl)."&amp;name=".urlencode(strtolower($item_title));
         
         if (yabp_item_title_via_entry_id($entry_id)) {            
-            return $wpdb->query("UPDATE `".$table_name_yabp_items."` SET item_title = '".esc_sql($item_title)."', item_subtitle = '".esc_sql($item_subtitle)."', item_externalurl = '".esc_sql($item_externalurl)."', item_afflink = '".esc_sql($item_afflink)."', item_xlthumb = '".esc_sql($item_xlthumb)."', item_lthumb = '".esc_sql($item_lthumb)."', item_mthumb = '".esc_sql($item_mthumb)."', item_sthumb = '".esc_sql($item_sthumb)."', item_xsthumb = '".esc_sql($item_xsthumb)."', item_price = '".esc_sql($item_price)."', item_listprice = '".esc_sql($item_listprice)."', item_availability = '".esc_sql($item_availability)."', item_availabilitycode = '".esc_sql($item_availabilitycode)."', item_rating = '".esc_sql($item_rating)."', item_ratingspan = '".esc_sql($item_ratingspan)."', time = '".esc_sql($time)."' WHERE entry_id = '".esc_sql($entry_id)."'");
+            $wpdb->query("UPDATE `".$table_name_yabp_items."` SET item_title = '".esc_sql($item_title)."', item_subtitle = '".esc_sql($item_subtitle)."', item_externalurl = '".esc_sql($item_externalurl)."', item_afflink = '".esc_sql($item_afflink)."', item_xlthumb = '".esc_sql($item_xlthumb)."', item_lthumb = '".esc_sql($item_lthumb)."', item_mthumb = '".esc_sql($item_mthumb)."', item_sthumb = '".esc_sql($item_sthumb)."', item_xsthumb = '".esc_sql($item_xsthumb)."', item_price = '".esc_sql($item_price)."', item_listprice = '".esc_sql($item_listprice)."', item_availability = '".esc_sql($item_availability)."', item_availabilitycode = '".esc_sql($item_availabilitycode)."', item_rating = '".esc_sql($item_rating)."', item_ratingspan = '".esc_sql($item_ratingspan)."', time = '".esc_sql($time)."' WHERE entry_id = '".esc_sql($entry_id)."'");                        
+            if (yabp_entry_boolean_via_entry_id($entry_id, 'entry_expired_notification_sent', true) == 1 && $item_price > 0) { $wpdb->query("UPDATE `".$table_name_yabp."` SET entry_expired_notification_sent = '0' WHERE entry_id = '".esc_sql($entry_id)."'"); }            
+            return $item_price;
         }
         else {
-            return $wpdb->query("INSERT INTO `".$table_name_yabp_items."` (item_id, entry_id, item_title, item_subtitle, item_externalurl, item_afflink, item_xlthumb, item_lthumb, item_mthumb, item_sthumb, item_xsthumb, item_price, item_listprice, item_availability, item_availabilitycode, item_rating, item_ratingspan, time) VALUES ('', '".esc_sql($entry_id)."', '".esc_sql($item_title)."', '".esc_sql($item_subtitle)."', '".esc_sql($item_externalurl)."', '".esc_sql($item_afflink)."', '".esc_sql($item_xlthumb)."', '".esc_sql($item_lthumb)."', '".esc_sql($item_mthumb)."', '".esc_sql($item_sthumb)."', '".esc_sql($item_xsthumb)."', '".esc_sql($item_price)."', '".esc_sql($item_listprice)."', '".esc_sql($item_availability)."', '".esc_sql($item_availabilitycode)."', '".esc_sql($item_rating)."', '".esc_sql($item_ratingspan)."', '".esc_sql($time)."')");
+            $wpdb->query("INSERT INTO `".$table_name_yabp_items."` (item_id, entry_id, item_title, item_subtitle, item_externalurl, item_afflink, item_xlthumb, item_lthumb, item_mthumb, item_sthumb, item_xsthumb, item_price, item_listprice, item_availability, item_availabilitycode, item_rating, item_ratingspan, time) VALUES ('', '".esc_sql($entry_id)."', '".esc_sql($item_title)."', '".esc_sql($item_subtitle)."', '".esc_sql($item_externalurl)."', '".esc_sql($item_afflink)."', '".esc_sql($item_xlthumb)."', '".esc_sql($item_lthumb)."', '".esc_sql($item_mthumb)."', '".esc_sql($item_sthumb)."', '".esc_sql($item_xsthumb)."', '".esc_sql($item_price)."', '".esc_sql($item_listprice)."', '".esc_sql($item_availability)."', '".esc_sql($item_availabilitycode)."', '".esc_sql($item_rating)."', '".esc_sql($item_ratingspan)."', '".esc_sql($time)."')");
+            return $item_price;
         }        
     }
     else { return false; }
@@ -781,6 +839,11 @@ function yabp_page_exists_dealslist($pagenumber) {
     
     if ($pages >= $pagenumber) { return true; }
     else { return false; }
+}
+
+function yabp_expired_items_count() {
+    global $wpdb, $table_name_yabp_items;
+    return $wpdb->get_var("SELECT COUNT(entry_id) FROM `".$table_name_yabp_items."` WHERE item_price = '0'");
 }
 
 function yabp_format_price($price) {
@@ -1527,6 +1590,73 @@ function yabp_itemlist_init() {
 
 add_action('init', 'yabp_itemlist_init');
 
+function yabp_productmanager() {
+    global $wpdb, $table_name_yabp, $table_name_yabp_items, $yabp_productmanager_count;
+    
+    if (!get_option('yabp_productmanager_count')) { $perpage = $yabp_productmanager_count; }
+    else { $perpage = get_option('yabp_productmanager_count'); }
+
+    ?>
+    <div class="wrap">
+    <h2>Yet Another bol.com Plugin</h2>
+    <h3><?php _e('Product manager', 'yabp'); ?></h3>        
+    <h4><?php _e('Expired products', 'yabp'); ?>: <?php echo yabp_expired_items_count(); ?> (<a href="#" title="<?php _e('Expired products are products that are not available anymore. On this page, you can replace them easily.', 'yabp'); ?>" style="text-decoration: none;">?</a>) - <?php _e('Email notification', 'yabp'); ?>: <?php if (get_option('yabp_productmanager_expired_products_notification') == 1) { ?><span style="color: green; font-weight: bold;"><?php _e('ON', 'yabp'); ?></span><? } else { ?><span style="color: red; font-weight: bold;"><?php _e('OFF', 'yabp'); ?></span><?php } ?> (<a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp#yabp_productmanager_expired_products_notification"; ?>" style="text-decoration: none"><?php _e('edit', 'yabp'); ?></a>)</h4>        
+    <?php        
+    
+    $_page = isset($_GET['p']) && intval($_GET['p']) != '' ? $_GET['p'] : 1;    
+    $gettotal = $wpdb->get_row("SELECT COUNT(entry_id) FROM `".$table_name_yabp_items."` WHERE item_price = '0'",ARRAY_N);
+    $totalpage = ceil( $gettotal[0] / (float) $perpage);
+    $limit = ( ($_page-1) * $perpage).','.$perpage;
+    
+    if ($gettotal[0] == 0) {
+        echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>'.__('No products can be found.', 'yabp').'</p></div>'."\n";
+        return;
+    }
+            
+    if ($_page > $totalpage) {
+        echo '<div style="font-weight: bold; margin-bottom:10px; padding:5px; background:#FFBDB0; border:1px solid #ccc;"><p>'.sprintf(__('Invalid page. <a href="%s">Click here</a> to go back.', 'yabp'), $_SERVER['PHP_SELF'].'?page=yabp-itemlist').'</p></div>';
+        return;
+    }
+
+    $nav = yabp_pagelinks($_SERVER['PHP_SELF'].'?page=yabp-productmanager&amp;p=', 10, $totalpage, $_page);    
+    $items_entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp_items."` WHERE item_price = '0' LIMIT ".$limit);
+    
+    ?>
+    <script type="text/javascript">
+        function sure() {
+            var ask = confirm('<?php _e('Are you sure?', 'yabp'); ?>');
+            if (ask == true) { return true; }
+            else { return false; }
+        }        
+    </script>
+    <table class="widefat comments fixed" cellspacing="0">
+        <thead><tr><th># / <?php _e('Shortcode', 'yabp'); ?> (<a href="#" title="<?php _e('Paste shortcodes of products anywhere on your website to display these products with their own settings.', 'yabp'); ?>">?</a>)</th><th><?php _e('Thumbnail', 'yabp'); ?></th><th><?php _e('Title', 'yabp'); ?> / <?php _e('Last update', 'yabp'); ?></th><th><?php _e('Options', 'yabp'); ?></th></tr></thead>
+        <tbody>
+    <?php
+        $i = 0;
+        foreach ($items_entries as $item_entry) {            
+            $item = $wpdb->get_row("SELECT * FROM `".$table_name_yabp_items."` WHERE entry_id = '".esc_sql($item_entry->entry_id)."'");            
+            $i++;
+            ?>
+            <tr>
+                <td<?php if ($i != count($items_entries)) { ?> style="border-bottom: 1px solid grey;"<?php } ?>><a name="yabp-<?php echo $item->entry_id; ?>"></a><strong><?php echo ((($_page-1) * $perpage) + $i); ?></strong><br /><br /><input value="<?php echo yabp_format_shortcode($item->entry_id); ?>" size="<?php echo strlen(yabp_format_shortcode($item->entry_id)); ?>" onClick="this.setSelectionRange(0, this.value.length)" /></td>
+                <td<?php if ($i != count($items_entries)) { ?> style="border-bottom: 1px solid grey;"<?php } ?>><a href="<?php echo $item->item_externalurl; ?>"><img alt="<?php echo $item->item_title; ?>" title="<?php echo $item->item_title; ?>" src="<?php echo $item->item_mthumb; ?>" /></a></td>
+                <td<?php if ($i != count($items_entries)) { ?> style="border-bottom: 1px solid grey;"<?php } ?>><a href="<?php echo $item->item_externalurl; ?>"><?php echo $item->item_title; ?></a><br /><br /><?php echo yabp_format_time($item->time); ?></td>
+                <td<?php if ($i != count($items_entries)) { ?> style="border-bottom: 1px solid grey;"<?php } ?>><a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-add-item&amp;action=replace_item&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Replace this item with an item from the bol.com Catalog', 'yabp'); ?>"><?php _e('Replace', 'yabp'); ?></a><br /><br />
+                <a href="<?php echo $_SERVER['PHP_SELF']."?page=yabp-itemlist&amp;action=delete_item&amp;entry_id=".$item->entry_id."&amp;p=".$_page; ?>" onclick="return sure()" title="<?php _e('Delete this item', 'yabp'); ?>"><?php _e('Delete', 'yabp'); ?></a></td>
+            </tr>
+        <?php 
+        }        
+
+        if (empty($items_entries)) { ?><tr><td></td><td><?php _e('No products found.', 'yabp'); ?></td></tr><?php }
+        ?>
+        </tbody>
+        <tfoot><tr><th># / <?php _e('Shortcode', 'yabp'); ?> (<a href="#" title="<?php _e('Paste shortcodes of products anywhere on your website to display these products with their own settings.', 'yabp'); ?>">?</a>)</th><th><?php _e('Thumbnail', 'yabp'); ?></th><th><?php _e('Title', 'yabp'); ?> / <?php _e('Last update', 'yabp'); ?></th><th><?php _e('Options', 'yabp'); ?></th></tr></tfoot>
+    </table>        
+    <?php
+    echo '<br />'.$nav;
+}
+
 function yabp_deals() {
     global $wpdb, $table_name_yabp_deals, $table_name_yabp_deals_items, $yabp_dealslist_count, $yabp_deals_keywords, $yabp_deals_keywords_strings, $yabp_deals_daydeals_keywords, $yabp_deals_daydeals_keywords_strings, $yabp_deals_updateinterval_default, $yabp_bolcom_deals_feed_link;
     
@@ -2041,29 +2171,47 @@ add_action('yabp_cron_event_daily', 'yabp_cron_event_daily_do');
 
 function yabp_cron_event_hourly_do() {
     global $wpdb, $table_name_yabp; 
+    $expired_products_array = array();    
     $interval = 1; 
+    $yabp_productmanager_expired_products_notification = get_option('yabp_productmanager_expired_products_notification');
     $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".esc_sql($interval)."'");
     foreach ($entries as $entry) {            
-        yabp_item_update_via_entry_id($entry->entry_id);
+        $item_price = yabp_item_update_via_entry_id($entry->entry_id);
+        if ($yabp_productmanager_expired_products_notification == 1 && $item_price == 0 && yabp_entry_boolean_via_entry_id($entry->entry_id, 'entry_expired_notification_sent', true) != 1) {
+            array_push($expired_products_array, $entry->entry_id);
+        }        
     }
+    if (count($expired_products_array) > 0) { yabp_productmanager_send_expired_products_notification(false, $expired_products_array); }    
 }
 
 function yabp_cron_event_twicedaily_do() {
     global $wpdb, $table_name_yabp; 
+    $expired_products_array = array();
     $interval = 2;   
+    $yabp_productmanager_expired_products_notification = get_option('yabp_productmanager_expired_products_notification');
     $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".esc_sql($interval)."'");
     foreach ($entries as $entry) {            
-        yabp_item_update_via_entry_id($entry->entry_id);
-    }      
+        $item_price = yabp_item_update_via_entry_id($entry->entry_id);
+        if ($yabp_productmanager_expired_products_notification == 1 && $item_price == 0 && yabp_entry_boolean_via_entry_id($entry->entry_id, 'entry_expired_notification_sent', true) != 1) {
+            array_push($expired_products_array, $entry->entry_id);
+        }        
+    }
+    if (count($expired_products_array) > 0) { yabp_productmanager_send_expired_products_notification(false, $expired_products_array); }          
 }
 
 function yabp_cron_event_daily_do() {
     global $wpdb, $table_name_yabp; 
+    $expired_products_array = array();
     $interval = 3;
+    $yabp_productmanager_expired_products_notification = get_option('yabp_productmanager_expired_products_notification');
     $entries = $wpdb->get_results("SELECT entry_id FROM `".$table_name_yabp."` WHERE entry_updateinterval = '".esc_sql($interval)."'");
     foreach ($entries as $entry) {            
-        yabp_item_update_via_entry_id($entry->entry_id);
-    }    
+        $item_price = yabp_item_update_via_entry_id($entry->entry_id);                
+        if ($yabp_productmanager_expired_products_notification == 1 && $item_price == 0 && yabp_entry_boolean_via_entry_id($entry->entry_id, 'entry_expired_notification_sent', true) != 1) {
+            array_push($expired_products_array, $entry->entry_id);
+        }
+    }
+    if (count($expired_products_array) > 0) { yabp_productmanager_send_expired_products_notification(false, $expired_products_array); }
 }
 
 function yabp_deals_cron_handle_eventstatus($action) {
@@ -2099,5 +2247,5 @@ function yabp_cron_handle_deactivate() {
     wp_clear_scheduled_hook('yabp_cron_event_daily');
     wp_clear_scheduled_hook('yabp_deals_cron_event_daily');
 }
-  
+    
 ?>
