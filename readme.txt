@@ -3,7 +3,7 @@ Contributors: Mitchel Troost
 Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, deals, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
-Tested up to: 4.1.1
+Tested up to: 4.2
 Stable tag: 1.2
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
