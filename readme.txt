@@ -3,8 +3,8 @@ Contributors: Mitchel Troost
 Donate link: http://tromit.nl/diensten/wordpress-plugins/
 Tags: bol.com, deals, affiliate, responsive, cronjob, post, page, shortcode
 Requires at least: 3.8.1
-Tested up to: 4.2
-Stable tag: 1.2
+Tested up to: 4.2.2
+Stable tag: 1.3
 License: GPL2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,9 +25,10 @@ From version 1.1, you are able to display bol.com deals in your blogs posts and 
 * User-friendly process to add products and deals to your database from the Catalog
 * Search for products in either the Dutch or the Belgium Catalog
 * Prices, delivery times and ratings are automatically updated
-* NEW: receive email notifications when a product expires from the Catalog
+* Receive email notifications when a product expires from the Catalog
 * Highly customizable layout, and you can choose between product links and the new bol.com buttons
 * Choose products have to be opened in a new tab and/or be put directly in the bol.com Cart
+* NEW: easily set up your shortcodes using the shortcode generator
 * Support for use in desktop, mobile and responsive themes
 * Full Dutch translation included
 
@@ -100,6 +101,10 @@ The available deals and deal categories depend on the offers at bol.com. The fee
 
 First check if you switched the email notifications to 'on'. Then try to send a test notification, and check the blog's set up the admin emailaddress for the test email (check your spam folder!). If you still cannot find any emails, you may contact the developer to troubleshoot.
 
+= What options can I set up in my shortcodes? =
+
+Check the shortcode generator for more information. If you need any further assistance, please contact the developer.
+
 == Screenshots ==
 
 1. Products displayed on a page
@@ -109,6 +114,12 @@ First check if you switched the email notifications to 'on'. Then try to send a 
 5. Product list of the plugin
 
 == Changelog ==
+
+= 1.3 =
+* Added the ability to adjust the product's layout (image and info width) and the product image width using their shortcodes
+* Added a shortcode generator for easy shortcode setup: check this generator for the new shortcode options
+* Improved SSL compatibility
+* Updated deals categories
 
 = 1.2 =
 * Added product manager for expired products
@@ -164,6 +175,9 @@ First check if you switched the email notifications to 'on'. Then try to send a 
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.3 =
+Added more layout options and a shortcode generator
 
 = 1.2 =
 Added product manager for expired products
